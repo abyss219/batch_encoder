@@ -269,12 +269,26 @@ class Encoding:
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.output_tmp_file = self.generate_output_filename()
+        self.new_file_path = self.get_new_file_path()
         self.logger.debug(f"🎬 Encoding initialized for {self.media_file.file_path}")
 
-    @property
-    def new_file_path(self) -> str:
+    def get_new_file_path(self) -> str:
+        """
+        Generate a unique file path by checking if the file already exists.
+        If the file exists, append a number suffix until a unique name is found.
+        
+        Example:
+            - "video.mp4"  → (exists) → "video_1.mp4"
+            - "video_1.mp4" → (exists) → "video_2.mp4"
+        """
         base_name, _ = os.path.splitext(self.media_file.file_path)
         new_file_name = f"{base_name}.mp4"
+        
+        counter = 1
+        while os.path.exists(new_file_name):
+            new_file_name = f"{base_name}_{counter}.mp4"  # Append suffix before extension
+            counter += 1
+
         return new_file_name
     
     def get_readable_resolution(self, media_file:MediaFile, tolerance = 0.05):
