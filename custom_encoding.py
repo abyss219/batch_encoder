@@ -1,4 +1,4 @@
-from encoding import EncodingStatus, Encoding, Av1Encoding, HevcEncoding
+from encoding import EncodingStatus, Encoding, Av1Encoding, HevcEncoding, MediaFile
 from typing import Type, Optional, List
 import subprocess
 import time
@@ -26,6 +26,18 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
         :return: A dynamically created class that inherits from Encoding.
         """
 
+        NLMEANS_SETTINGS = {
+            "light": "nlmeans=s=1.0:p=3:r=7",      # Ultra-Light Denoising (Almost No Detail Loss)
+            "mild": "nlmeans=s=1.5:p=5:r=9",       # Balanced Denoising (Mild but Effective) - Recommended
+            "moderate": "nlmeans=s=2.5:p=7:r=11",  # Moderate Denoising (Good for Noisy Night Videos)
+            "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
+        }
+
+        def __init__(self, media_file:MediaFile, denoise=None, delete_original=True):
+            super().__init__(media_file, delete_original=delete_original)
+
+            self.denoise = denoise
+
         def prepare_cmd(self) -> Optional[List[str]]:
             """Prepare FFmpeg command for HEVC encoding."""
             efficient_codecs = {"av1", "hevc", "vp9", "vvc", "theora"}
@@ -38,14 +50,22 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
                 return None
             
             
+            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "")
+            if denoise_args:
+                self.logger.info(f"Applied denoise: level {self.denoise}, arg: {denoise_args}")
+                denoise_args = ["-vf", denoise_args]
+
+
             cmd = ["ffmpeg", "-y", "-i", self.media_file.file_path,
                     *video_args,
                     *audio_args,
                     "-movflags", "+faststart",
                     "-c:s", "copy",
                     "-progress", "pipe:1", "-nostats",
+                    *denoise_args,
                     self.output_tmp_file
                     ]
+            print(" ".join(cmd))
             return cmd
 
         def get_duration(self) -> Optional[float]:

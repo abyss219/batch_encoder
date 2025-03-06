@@ -524,7 +524,7 @@ class HevcEncoding(Encoding):
     }
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
-                 delete_original: bool = False, output_dir: Optional[str] = None):
+                 delete_original: bool = False, output_dir: Optional[str] = None, **kwargs):
         super().__init__(media_file, codec="libx265", preset=preset, crf=crf,
                          delete_original=delete_original, output_dir=output_dir)
         
@@ -596,7 +596,7 @@ class Av1Encoding(Encoding):
     }
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
-                 cpu_used: Optional[int] = None, delete_original: bool = False, output_dir: Optional[str] = None):
+                 cpu_used: Optional[int] = None, delete_original: bool = False, output_dir: Optional[str] = None, **kwargs):
         self.cpu_used = cpu_used
         super().__init__(media_file, codec="libaom-av1", preset=preset, crf=crf,
                          delete_original=delete_original, output_dir=output_dir)

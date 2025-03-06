@@ -70,6 +70,12 @@ def parse_arguments():
     )
     parser.add_argument("--force-reset", action="store_true", help="Reset encoding state before starting.")
     
+    parser.add_argument(
+        "--denoise",
+        choices=["none", "light", "mild", "moderate", "heavy"],
+        default="none",
+        help="Apply denoising filter. Options: 'none', 'light', 'mild', 'moderate', 'heavy'. Default is 'none'."
+    )
     return parser.parse_args()
 
 
@@ -82,12 +88,14 @@ class BatchEncoder:
     STATE_FILE_PREFIX = "encoder_state"
     LOG_FILE_PREFIX = "batch_encoder"
     
-    def __init__(self, directory: str, min_size: Union[str, float] = "500MB", force_reset:bool=True):
+    def __init__(self, directory: str, min_size: Union[str, float] = "500MB", force_reset:bool=True, denoise:str=None):
         self.directory = directory
         self.min_size_bytes = self.parse_size(min_size)
         self.dir_hash = self.hash_directory(directory)  # Generate hash for directory\
         self.log_file = os.path.join(self.LOG_DIRECOTRY, f"{self.LOG_FILE_PREFIX}_{self.dir_hash}.log")
         self.state_file = os.path.join(self.LOG_DIRECOTRY, f"{self.STATE_FILE_PREFIX}_{self.dir_hash}.pkl")
+
+        self.denoise = denoise
         
         self.video_queue = []
         self.success_encodings = set()  # Stores successfully encoded videos
@@ -162,7 +170,7 @@ class BatchEncoder:
             
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {self.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
-            encoder = CustomEncoding(media_file, delete_original=True)
+            encoder = CustomEncoding(media_file, delete_original=True, denoise=self.denoise)
             status = encoder.encode_wrapper()
             
             if status == EncodingStatus.SUCCESS:
@@ -294,5 +302,5 @@ if __name__ == "__main__":
     check_ffmpeg_installed()
     args = parse_arguments()
     CustomEncoding = get_custom_encoding_class(args.codec)
-    encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, force_reset=args.force_reset)
+    encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, force_reset=args.force_reset, denoise=args.denoise if args.denoise else None)
     encoder.encode_videos()
