@@ -1,12 +1,12 @@
 from __future__ import annotations
+from .utils.logger import setup_logger
+from .config import *
 from typing import List, Optional
 import json
 import subprocess
 import re
 from dataclasses import dataclass, asdict
-import os
-from .utils.logger import setup_logger
-from .config import *
+import os, sys
 
 @dataclass(frozen=True)
 class VideoStream:
@@ -82,7 +82,11 @@ class MediaFile:
         ]
         try:
             # Run the FFmpeg command
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(cmd,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True,
+                                    encoding='utf-8')
 
             # Check if FFmpeg execution failed
             if result.returncode != 0:
@@ -113,9 +117,13 @@ class MediaFile:
         except ValueError as e:
             self.logger.error(f"❌ Float Conversion Error: {e}")
             return None
+        
+        except KeyboardInterrupt:
+            self.logger.warning(f"🔴 VMAF calculation interrupted manually (Ctrl+C).")
+            sys.exit(1)
 
         except Exception as e:
-            self.logger.error(f"❌ Unexpected Error: {e}")
+            self.logger.exception(e)
             return None
         
 

@@ -45,6 +45,9 @@ class Encoder:
             - "video.mp4"  → (exists) → "video_1.mp4"
             - "video_1.mp4" → (exists) → "video_2.mp4"
         """
+        if self.delete_original is False:
+            return self.output_tmp_file
+
         base_name = os.path.splitext(self.media_file.file_name)[0]
         new_path = os.path.join(self.output_dir, f"{base_name}.mp4")
         
@@ -142,19 +145,21 @@ class Encoder:
                 tmp_media = MediaFile(self.output_tmp_file)
             except ValueError:
                 self.logger.warning("⚠️ The encoded media is corrupted. The original media will not be deleted.")
-                return
+                self.new_file_path = self.output_tmp_file
+                return EncodingStatus.FAILED
             else:
                 vmaf_score = self.media_file.compare(tmp_media)
                 if vmaf_score is not None:
                     self.logger.info(f"✅ VMAF Score: {vmaf_score:.2f}")
                 else:
                     self.logger.warning("⚠️ VMAF comparison failed. The original file will not be deleted.")
-                    return
+                    self.new_file_path = self.output_tmp_file
+                    return EncodingStatus.FAILED
         
             if vmaf_score < self.delete_threshold:
                 self.logger.warning(f"⚠️ VMAF comparison below threshold {self.delete_threshold}. The original file will not be deleted.")
-                return
-
+                self.new_file_path = self.output_tmp_file
+                return EncodingStatus.LOWQUALITY
 
         if self.delete_original:
             try:
@@ -164,6 +169,9 @@ class Encoder:
                 self.logger.info(f"📁 Successfully replaced {self.media_file.file_name} with {os.path.basename(self.new_file_path)}")
             except OSError as e:
                 self.logger.error(f"❌ Failed to delete original file: {e}")
+                return EncodingStatus.FAILED
+        
+        return EncodingStatus.SUCCESS
 
     def _encode(self) -> EncodingStatus:
         ffmpeg_cmd = self.prepare_cmd()
@@ -175,9 +183,9 @@ class Encoder:
         self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
         result = subprocess.run(ffmpeg_cmd, check=True)
         
-        
-        self.clean_up()
-        return EncodingStatus.SUCCESS
+        status = EncodingStatus.SUCCESS
+        status = self.clean_up()
+        return status
 
     def encode_wrapper(self) -> EncodingStatus:
         """Encodes the video and returns its status."""
@@ -219,7 +227,7 @@ class HevcEncoder(Encoder):
         super().__init__(media_file, codec="libx265", preset=preset, crf=crf,
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, output_dir=output_dir)
         
-        self.logger.debug(f"🔹 HEVC class initialized for {media_file.file_path}")
+        self.logger.debug(f'🔹 HEVC class initialized for "{media_file.file_path}"')
 
     def _get_filename_suffix(self) -> str:
         """Create the filename suffix for HEVC encoding."""
@@ -255,7 +263,7 @@ class HevcEncoder(Encoder):
                 crf_log.append(self.get_crf(video_stream))
         
         self.logger.debug(f"🎬 Prepared video arguments: {video_args}")
-        self.logger.info(f"🔹 HEVC encoding initialized for {self.media_file.file_name} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}")
+        self.logger.info(f'🔹 HEVC encoding initialized for "{self.media_file.file_name}" | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}')
         return video_args
 
 class Av1Encoder(Encoder):
@@ -273,7 +281,7 @@ class Av1Encoder(Encoder):
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, output_dir=output_dir)
         
         
-        self.logger.debug(f"🔹 AV1 class initialized for {media_file.file_path}")
+        self.logger.debug(f'🔹 AV1 class initialized for "{media_file.file_path}"')
 
     
     def get_maximum_keyframe_interval(self, video_stream:VideoStream) -> str:
@@ -317,7 +325,7 @@ class Av1Encoder(Encoder):
             
             counter += 1
         
-        self.logger.info(f"🔹 AV1 encoding initialized for {self.media_file.file_name} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}")
+        self.logger.info(f'🔹 AV1 encoding initialized for "{self.media_file.file_name}" | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}')
         self.logger.debug(f"🎬 Prepared video arguments: {video_args}")
         return video_args
 

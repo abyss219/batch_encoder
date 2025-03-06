@@ -13,6 +13,7 @@ class EncodingStatus(Enum):
     SKIPPED = "skipped"
     SUCCESS = "success"
     FAILED = "failed"
+    LOWQUALITY = "low quality"
 
 RESOLUTION = {
     "4k": 3840 * 2160,
@@ -22,33 +23,35 @@ RESOLUTION = {
     "480p": 640 * 480
 }
 DEFAULT_PRESET_HEVC = {
-    "4k": "veryslow",
-    "2k": "slower",
-    "1080p": "slow",
+    "4k": "slow",
+    "2k": "slow",
+    "1080p": "medium",
     "720p": "medium",
-    "480p": "medium"
+    "480p": "fast"
 }
 
 DEFAULT_CRF_HEVC = {
     "4k": 20,
-    "2k": 22,
-    "1080p": 24,
-    "720p": 26,
-    "480p": 28
+    "2k": 21,
+    "1080p": 22,
+    "720p": 24,
+    "480p": 26
 }
+
 
 DEFAULT_PRESET_AV1 = {
-    "4k": 0,
-    "2k": 1,
-    "1080p": 2,
-    "720p": 3,
-    "480p": 4
+    "4k": 3,
+    "2k": 3,
+    "1080p": 4,
+    "720p": 5,
+    "480p": 6
 }
 
+
 DEFAULT_CRF_AV1 = {
-    "4k": 21,
+    "4k": 22,
     "2k": 23,
     "1080p": 25,
     "720p": 27,
-    "480p": 30
+    "480p": 29
 }
