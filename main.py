@@ -9,6 +9,55 @@ import pickle
 import hashlib
 import argparse
 
+VIDEO_EXTENSIONS = {
+    ".mp4",  # MPEG-4 Part 14
+    ".mkv",  # Matroska
+    ".mov",  # QuickTime File Format
+    ".avi",  # Audio Video Interleave
+    ".flv",  # Flash Video
+    ".webm", # WebM
+    ".wmv",  # Windows Media Video
+    ".mpg",  # MPEG-1
+    ".mpeg", # MPEG-1
+    ".m4v",  # MPEG-4 Video File
+    ".3gp",  # 3GPP Multimedia File
+    ".3g2",  # 3GPP2 Multimedia File
+    ".ts",   # MPEG Transport Stream
+    ".m2ts", # Blu-ray Disc Audio-Video (BDAV) MPEG-2 Transport Stream
+    ".mts",  # AVCHD Video File
+    ".vob",  # DVD Video Object
+    ".ogv",  # Ogg Video
+    ".rm",   # RealMedia
+    ".rmvb", # RealMedia Variable Bitrate
+    ".divx", # DivX-Encoded Movie File
+    ".f4v",  # Flash MP4 Video File
+    ".swf",  # Shockwave Flash Movie
+    ".amv",  # Anime Music Video File
+    ".asf",  # Advanced Systems Format
+    ".mxf",  # Material Exchange Format
+    ".dv",   # Digital Video File
+    ".qt",   # QuickTime Movie
+    ".yuv",  # YUV Video File
+    ".mpe",  # MPEG Movie File
+    ".mpv",  # MPEG Elementary Stream Video File
+    ".m1v",  # MPEG-1 Video File
+    ".m2v",  # MPEG-2 Video
+    ".svi",  # Samsung Video File
+    ".drc",  # Dirac Video File
+    ".ivf",  # Indeo Video Format
+    ".nsv",  # Nullsoft Streaming Video
+    ".fli",  # FLIC Animation
+    ".flc",  # FLIC Animation
+    ".gxf",  # General eXchange Format
+    ".mxf",  # Material Exchange Format
+    ".roq",  # RoQ Video
+    ".smi",  # Synchronized Multimedia Integration Language
+    ".smil", # Synchronized Multimedia Integration Language
+    ".wm",   # Windows Media Video
+    ".wtv"   # Windows Recorded TV Show
+}
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Batch video encoding script.")
     parser.add_argument("directory", help="Directory containing videos to encode.")
@@ -71,12 +120,12 @@ class BatchEncoder:
 
     def get_video_files(self) -> List[str]:
         """Retrieve all video files under the directory and its subdirectories."""
-        video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".flv", ".webm"}
         video_files = []
         for root, _, files in os.walk(self.directory):
             for file in files:
-                if any(file.lower().endswith(ext) for ext in video_extensions):
+                if any(file.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
                     video_files.append(os.path.join(root, file))
+                    self.logger.debug(f"Found video {file}")
         return video_files
 
     def prepare_video_queue(self):

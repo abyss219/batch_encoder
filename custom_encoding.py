@@ -25,54 +25,32 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
         :param codec: The codec type ("hevc" or "av1").
         :return: A dynamically created class that inherits from Encoding.
         """
-        def is_efficient_codec(self, codec: Optional[str]) -> bool:
-            """
-            Check if the given codec is an efficient encoding.
-            Efficient codecs include AV1, HEVC, VP9, and other modern codecs such as VVC and Theora.
-            
-            :param codec: The codec name as a string.
-            :return: True if the codec is efficient, False otherwise.
-            """
-            efficient_codecs = {"av1", "hevc", "vp9", "vvc", "theora"}
-            return codec in efficient_codecs
-
 
         def prepare_cmd(self) -> Optional[List[str]]:
-            
-            if self.media_file.video_codec == "hevc" and self.media_file.tag_string == "hev1":
-                super_cmd =  super().prepare_cmd()
-            
-            if self.is_efficient_codec(self.media_file.video_codec):
-                return None
+            """Prepare FFmpeg command for HEVC encoding."""
+            efficient_codecs = {"av1", "hevc", "vp9", "vvc", "theora"}
+            video_args = self.prepare_video_args(efficient_codecs)
+            audio_args = self.prepare_audio_args()
 
-            super_cmd =  super().prepare_cmd()
-            super_cmd += ["-progress", "pipe:1", "-nostats"] # Enables FFmpeg progress output
-            return super_cmd
+            if not video_args:
+                return None
+            elif self.codec not in video_args:
+                return None
+            
+            
+            cmd = ["ffmpeg", "-y", "-i", self.media_file.file_path,
+                    *video_args,
+                    *audio_args,
+                    "-movflags", "+faststart",
+                    "-c:s", "copy",
+                    "-progress", "pipe:1", "-nostats",
+                    self.output_tmp_file
+                    ]
+            return cmd
 
         def get_duration(self) -> Optional[float]:
-            """Retrieve video duration in seconds using FFprobe."""
-            try:
-                result = subprocess.run(
-                    ["ffprobe", "-v", "error", "-select_streams", "v:0",
-                    "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
-                    self.media_file.file_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                
-                duration = result.stdout.strip()
-                
-                return float(duration) if duration else None
-            except subprocess.CalledProcessError as e:
-                self.logger.warning(f"⚠️ FFprobe failed to get duration for {self.media_file.file_path}: {e}")
-            except ValueError:
-                self.logger.warning(f"⚠️ Duration output could not be parsed for {self.media_file.file_path}.")
-            except Exception as e:
-                self.logger.error(f"❌ Unexpected error while getting duration: {e}")
-            return None
-
-
+            """Retrieve video duration in seconds."""
+            return float(self.media_file.video_info[0].duration)
 
         def _encode(self) -> EncodingStatus:
             ffmpeg_cmd = self.prepare_cmd()
