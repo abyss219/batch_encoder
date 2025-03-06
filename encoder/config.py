@@ -30,33 +30,25 @@ DEFAULT_PRESET_HEVC = {
 }
 
 DEFAULT_CRF_HEVC = {
-    "4k": 17,
-    "2k": 19,
-    "1080p": 21,
-    "720p": 23,
-    "480p": 25
-}
-
-DEFAULT_PRESET_AV1 = {
-    "4k": "slowest",
-    "2k": "slower",
-    "1080p": "slow",
-    "720p": "medium",
-    "480p": "medium"  # Change: Use medium for 480p for better speed
-}
-
-DEFAULT_CRF_AV1 = {
     "4k": 20,
     "2k": 22,
     "1080p": 24,
-    "720p": 25,
-    "480p": 27
+    "720p": 26,
+    "480p": 28
 }
 
-DEFAULT_CPU_USED_AV1 = {
-    "4k": 4,
-    "2k": 4,
-    "1080p": 5,
-    "720p": 5,
-    "480p": 6
+DEFAULT_PRESET_AV1 = {
+    "4k": 0,
+    "2k": 1,
+    "1080p": 2,
+    "720p": 3,
+    "480p": 4
+}
+
+DEFAULT_CRF_AV1 = {
+    "4k": 21,
+    "2k": 23,
+    "1080p": 25,
+    "720p": 27,
+    "480p": 30
 }

@@ -33,8 +33,8 @@ def get_custom_encoding_class(codec: str) -> Type[Encoder]:
             "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
         }
 
-        def __init__(self, media_file:MediaFile, denoise=None, delete_original=True):
-            super().__init__(media_file, delete_original=delete_original, verify=False)
+        def __init__(self, media_file:MediaFile, denoise=None, delete_original=True, verify=False, ):
+            super().__init__(media_file, delete_original=delete_original, verify=verify)
 
             self.denoise = denoise
 
@@ -128,7 +128,7 @@ def get_custom_encoding_class(codec: str) -> Type[Encoder]:
                 pbar.close()  # Close tqdm progress bar
 
             if process.returncode == 0:
-                self.delete_original_file()
+                self.clean_up()
                 self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
                 return EncodingStatus.SUCCESS
             else:

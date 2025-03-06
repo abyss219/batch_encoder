@@ -32,11 +32,11 @@ class Encoder:
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.output_tmp_file = self.generate_tmp_output_filename()
-        self.new_file_path = self.get_new_file_path()
+        self.output_tmp_file = self.generate_tmp_output_path()
+        self.new_file_path = self.generate_new_file_path()
         self.logger.debug(f"🎬 Encoding initialized for {self.media_file.file_path}")
 
-    def get_new_file_path(self) -> str:
+    def generate_new_file_path(self) -> str:
         """
         Generate a unique file path by checking if the file already exists.
         If the file exists, append a number suffix until a unique name is found.
@@ -45,8 +45,12 @@ class Encoder:
             - "video.mp4"  → (exists) → "video_1.mp4"
             - "video_1.mp4" → (exists) → "video_2.mp4"
         """
-        base_name = os.path.splitext(os.path.basename(self.media_file.file_path))[0]
+        base_name = os.path.splitext(self.media_file.file_name)[0]
         new_path = os.path.join(self.output_dir, f"{base_name}.mp4")
+        
+        
+        if new_path == self.media_file.file_path: # if the input media file already has the extension mp4, just replace it
+            return new_path
         
         counter = 1
         while os.path.exists(new_path):
@@ -56,9 +60,9 @@ class Encoder:
         return new_path
     
 
-    def generate_tmp_output_filename(self) -> str:
+    def generate_tmp_output_path(self) -> str:
         """Generate a unique output filename based on encoding parameters."""
-        base_name = os.path.splitext(os.path.basename(self.media_file.file_path))[0]
+        base_name = os.path.splitext(self.media_file.file_name)[0]
 
         # Get the suffix from the subclass
         suffix = self._get_filename_suffix()
@@ -75,7 +79,8 @@ class Encoder:
         return output_filename
 
     def get_preset(self, video_stream:VideoStream) -> str:
-        return self.preset if self.preset is not None else self.DEFAULT_PRESET[video_stream.get_readable_resolution_or_default()]
+        preset = self.preset if self.preset is not None else self.DEFAULT_PRESET[video_stream.get_readable_resolution_or_default()]
+        return str(preset)
     
     def get_crf(self, video_stream:VideoStream) -> str:
         crf = self.crf if self.crf is not None else self.DEFAULT_CRF[video_stream.get_readable_resolution_or_default()]
@@ -154,10 +159,9 @@ class Encoder:
         if self.delete_original:
             try:
                 self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
-                new_file_name = self.new_file_path
                 os.remove(self.media_file.file_path)
-                os.rename(self.output_tmp_file, new_file_name)
-                self.logger.info(f"📁 Successfully replaced {os.path.basename(self.media_file.file_path)} with {os.path.basename(new_file_name)}")
+                os.rename(self.output_tmp_file, self.new_file_path)
+                self.logger.info(f"📁 Successfully replaced {self.media_file.file_name} with {os.path.basename(self.new_file_path)}")
             except OSError as e:
                 self.logger.error(f"❌ Failed to delete original file: {e}")
 
@@ -251,38 +255,26 @@ class HevcEncoder(Encoder):
                 crf_log.append(self.get_crf(video_stream))
         
         self.logger.debug(f"🎬 Prepared video arguments: {video_args}")
-        self.logger.info(f"🔹 HEVC encoding initialized for {self.media_file.file_path} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}")
+        self.logger.info(f"🔹 HEVC encoding initialized for {self.media_file.file_name} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}")
         return video_args
 
 class Av1Encoder(Encoder):
     """Handles AV1 encoding with resolution-based parameter selection."""
 
-    DEFAULT_PRESET = DEFAULT_PRESET_AV1
-
     # 8-10% quality loss
     DEFAULT_CRF = DEFAULT_CRF_AV1
 
-    DEFAULT_CPU_USED = DEFAULT_CPU_USED_AV1
+    DEFAULT_PRESET = DEFAULT_PRESET_AV1
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
-                 cpu_used: Optional[int] = None, delete_original: bool = False, verify: bool = False, 
+                 delete_original: bool = False, verify: bool = False, 
                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None, **kwargs):
-        self.cpu_used = cpu_used
         super().__init__(media_file, codec="libaom-av1", preset=preset, crf=crf,
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, output_dir=output_dir)
         
         
         self.logger.debug(f"🔹 AV1 class initialized for {media_file.file_path}")
 
-
-    def get_cpu_used(self, video_stream:VideoStream) -> str:
-        selected_cpu_used = self.cpu_used if self.cpu_used is not None else self.DEFAULT_CPU_USED[video_stream.get_readable_resolution_or_default()]
-        if selected_cpu_used > 8:
-            selected_cpu_used = 8
-        elif selected_cpu_used < 0:
-            selected_cpu_used = 0
-        
-        return str(selected_cpu_used)
     
     def get_maximum_keyframe_interval(self, video_stream:VideoStream) -> str:
         frame_rate = video_stream.frame_rate if video_stream.frame_rate else DEFAULT_FRAME_RATE
@@ -298,7 +290,6 @@ class Av1Encoder(Encoder):
 
         preset_log = []
         crf_log = []
-        cpu_used_log = []
 
         counter = 0
         for video_stream in self.media_file.video_info:
@@ -309,14 +300,13 @@ class Av1Encoder(Encoder):
 
                 preset_log.append("copy")
                 crf_log.append("copy")
-                cpu_used_log.append("copy")
             else:
                 
-                preset, crf, cpu_used = self.get_preset(video_stream), self.get_crf(video_stream), self.get_cpu_used(video_stream)
+                preset, crf = self.get_preset(video_stream), self.get_crf(video_stream)
                 maximum_keyframe_interval = self.get_maximum_keyframe_interval(video_stream)
                 keyint_min = self.get_keyint_min(video_stream)
-                video_args.extend(["libaom-av1", "-preset", preset, 
-                                   "-cpu-used", cpu_used, "-row-mt", "1", 
+                video_args.extend(["libaom-av1", "-cpu-used", preset, 
+                                   "-row-mt", "1", 
                                    "-crf", crf, "-b:v", "0",
                                    "-g", maximum_keyframe_interval,
                                    "-keyint_min", keyint_min,
@@ -324,16 +314,15 @@ class Av1Encoder(Encoder):
                 # Note that in FFmpeg versions prior to 4.3, triggering the CRF mode also requires setting the bitrate to 0 with -b:v 0. If this is not done, the -crf switch triggers the constrained quality mode with a default bitrate of 256kbps.
                 preset_log.append(preset)
                 crf_log.append(crf)
-                cpu_used_log.append(cpu_used)
             
             counter += 1
         
-        self.logger.info(f"🔹 AV1 encoding initialized for {self.media_file.file_path} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)} | CPU: {", ".join(cpu_used_log)}")
+        self.logger.info(f"🔹 AV1 encoding initialized for {self.media_file.file_name} | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}")
         self.logger.debug(f"🎬 Prepared video arguments: {video_args}")
         return video_args
 
     def _get_filename_suffix(self) -> str:
-        """Create the filename suffix for AV1 encoding, including CPU-used."""
+        """Create the filename suffix for AV1 encoding."""
         first_media = self.media_file.video_info[0]
-        return f"_av1_preset-{self.get_preset(first_media)}_crf-{self.get_crf(first_media)}_cpu-{self.get_cpu_used(first_media)}"
+        return f"_av1_preset-{self.get_preset(first_media)}_crf-{self.get_crf(first_media)}"
 

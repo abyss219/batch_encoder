@@ -62,16 +62,8 @@ class MediaFile:
             raise ValueError("The provided file does not contain a valid video stream.")
         self.audio_info = self.get_audio_info()
 
+        self.file_name = os.path.basename(self.file_path)
 
-    @property
-    def num_video_stream(self):
-        """Returns the number of video streams in the file."""
-        return len(self.video_info)
-    
-    @property
-    def num_audio_stream(self):
-        """Returns the number of audio streams in the file."""
-        return len(self.audio_info)
 
     def compare(self, other: MediaFile) -> float:
         """
@@ -80,7 +72,7 @@ class MediaFile:
         :param other: Another MediaFile object to compare against.
         :return: VMAF score as a float, or None if an error occurs.
         """
-        self.logger.debug(f"🔍 Comparing {os.path.basename(self.file_path)} with {os.path.basename(other.file_path)} using VMAF")
+        self.logger.debug(f"🔍 Comparing {self.file_name} with {other.file_name} using VMAF")
         
         cmd = [
             "ffmpeg", "-i", self.file_path, # Original Video
