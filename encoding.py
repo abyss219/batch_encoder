@@ -464,11 +464,13 @@ class Av1Encoding(Encoding):
         "480p": "medium"  # Change: Use medium for 480p for better speed
     }
 
+    # 8-10% quality loss
     DEFAULT_CRF = {
-        "4k": 26,
-        "1080p": 28,
-        "720p": 30,
-        "480p": 34
+        "4k": 23,
+        "2k": 25,
+        "1080p": 26,
+        "720p": 28,
+        "480p": 32
     }
 
     DEFAULT_CPU_USED = {
@@ -488,6 +490,8 @@ class Av1Encoding(Encoding):
         if selected_cpu_used > available_cpus:
             self.logger.warning(f"⚠️ Requested cpu-used={selected_cpu_used}, but only {available_cpus} CPUs available. Adjusting to {available_cpus}.")
             selected_cpu_used = available_cpus
+        if selected_cpu_used > 8:
+            selected_cpu_used = 8 # valid values for -cpu-used are from 0 to 8 inclusive.
 
         self.cpu_used = selected_cpu_used
         selected_crf = crf if crf is not None else self.DEFAULT_CRF[self.resolution]
