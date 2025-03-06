@@ -583,8 +583,8 @@ class Av1Encoding(Encoding):
         "4k": 20,
         "2k": 22,
         "1080p": 24,
-        "720p": 25,
-        "480p": 27
+        "720p": 26,
+        "480p": 28
     }
 
     DEFAULT_CPU_USED = {
