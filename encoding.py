@@ -284,7 +284,6 @@ class MediaFile:
             "stream=codec_type,codec_name,index,bit_rate,sample_rate",
             "-of", "json", self.file_path
         ]
-        print(" ".join(cmd))
         index_counter = 0
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -509,16 +508,16 @@ class HevcEncoding(Encoding):
     """Handles HEVC (H.265) encoding with resolution-based parameter selection."""
 
     DEFAULT_PRESET = {
-        "4k": "slow",
-        "2k": "slow",
+        "4k": "veryslow",
+        "2k": "slower",
         "1080p": "slow",
-        "720p": "slow",
-        "480p": "medium"  # Change: Use medium for 480p for better speed
+        "720p": "medium",
+        "480p": "medium"
     }
 
     DEFAULT_CRF = {
-        "4k": 22,
-        "2k": 23,
+        "4k": 20,
+        "2k": 22,
         "1080p": 24,
         "720p": 26,
         "480p": 28
@@ -572,20 +571,20 @@ class Av1Encoding(Encoding):
     """Handles AV1 encoding with resolution-based parameter selection."""
 
     DEFAULT_PRESET = {
-        "4k": "slow",
-        "2k": "slow",
+        "4k": "slowest",
+        "2k": "slower",
         "1080p": "slow",
-        "720p": "slow",
+        "720p": "medium",
         "480p": "medium"  # Change: Use medium for 480p for better speed
     }
 
     # 8-10% quality loss
     DEFAULT_CRF = {
-        "4k": 23,
-        "2k": 25,
-        "1080p": 26,
-        "720p": 28,
-        "480p": 32
+        "4k": 21,
+        "2k": 23,
+        "1080p": 25,
+        "720p": 27,
+        "480p": 30
     }
 
     DEFAULT_CPU_USED = {
