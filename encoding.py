@@ -516,11 +516,11 @@ class HevcEncoding(Encoding):
     }
 
     DEFAULT_CRF = {
-        "4k": 20,
-        "2k": 22,
-        "1080p": 24,
-        "720p": 26,
-        "480p": 28
+        "4k": 17,
+        "2k": 19,
+        "1080p": 21,
+        "720p": 23,
+        "480p": 25
     }
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
@@ -580,11 +580,11 @@ class Av1Encoding(Encoding):
 
     # 8-10% quality loss
     DEFAULT_CRF = {
-        "4k": 21,
-        "2k": 23,
-        "1080p": 25,
-        "720p": 27,
-        "480p": 30
+        "4k": 20,
+        "2k": 22,
+        "1080p": 24,
+        "720p": 25,
+        "480p": 27
     }
 
     DEFAULT_CPU_USED = {

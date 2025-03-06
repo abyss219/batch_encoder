@@ -65,7 +65,6 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
                     *denoise_args,
                     self.output_tmp_file
                     ]
-            print(" ".join(cmd))
             return cmd
 
         def get_duration(self) -> Optional[float]:
