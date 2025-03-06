@@ -1,11 +1,11 @@
-from encoding import EncodingStatus, Encoding, Av1Encoding, HevcEncoding, MediaFile
+from .encoder import EncodingStatus, Encoder, Av1Encoder, HevcEncoder, MediaFile
 from typing import Type, Optional, List
 import subprocess
 import time
 import re
 from tqdm import tqdm
 
-def get_custom_encoding_class(codec: str) -> Type[Encoding]:
+def get_custom_encoding_class(codec: str) -> Type[Encoder]:
     """
     Dynamically create a CustomEncoding class that inherits from HevcEncoding or Av1Encoding.
     
@@ -16,7 +16,7 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
     if codec not in {"hevc", "av1"}:
         raise ValueError(f"❌ Invalid codec: '{codec}'. Supported codecs: 'hevc', 'av1'.")
 
-    parent_class: Type[Encoding] = HevcEncoding if codec == "hevc" else Av1Encoding
+    parent_class: Type[Encoder] = HevcEncoder if codec == "hevc" else Av1Encoder
 
     class CustomEncoding(parent_class):
         """
@@ -34,7 +34,7 @@ def get_custom_encoding_class(codec: str) -> Type[Encoding]:
         }
 
         def __init__(self, media_file:MediaFile, denoise=None, delete_original=True):
-            super().__init__(media_file, delete_original=delete_original)
+            super().__init__(media_file, delete_original=delete_original, verify=False)
 
             self.denoise = denoise
 
