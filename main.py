@@ -61,7 +61,7 @@ VIDEO_EXTENSIONS = {
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Batch video encoding script.")
     parser.add_argument("directory", help="Directory containing videos to encode.")
-    parser.add_argument("--min-size", default="500MB", help="Minimum file size to encode (e.g., '500MB', '1GB').")
+    parser.add_argument("--min-size", default="100MB", help="Minimum file size to encode (e.g., '500MB', '1GB').")
     parser.add_argument(
         "--codec",
         choices=["hevc", "av1"],
