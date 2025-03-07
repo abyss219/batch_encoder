@@ -9,9 +9,10 @@ def check_ffmpeg_installed() -> bool:
         print("❌ Error: FFmpeg is not installed or not found in the system path.")
         return False
 
-from .encoder import HevcEncoder, Av1Encoder
+from .encoders.hevc_encoder import HevcEncoder
+from .encoders.av1_encoder import LibaomAV1Encoder, SVTAV1Encoder
 from .media import MediaFile
 
 __all__ = [
-    'HevcEncoder', 'Av1Encoder', 'MediaFile', 'check_ffmpeg_installed'
+    'HevcEncoder', 'LibaomAV1Encoder', 'SVTAV1Encoder', 'MediaFile', 'check_ffmpeg_installed'
 ]

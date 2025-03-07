@@ -1,7 +1,7 @@
 from encoder import *
 from encoder.config import *
 from encoder.utils.logger import setup_logger
-from encoder.custom_encoder import get_custom_encoding_class
+from encoder.encoders.custom_encoder import get_custom_encoding_class
 from typing import Union, List
 import re
 import os

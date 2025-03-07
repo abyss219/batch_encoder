@@ -149,7 +149,7 @@ if __name__ == "__main__":
                                verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
                                output_dir=output_dir)
     else:
-        encoder = Av1Encoder(media, preset=args.preset, crf=args.crf, cpu_used=args.cpu_used, 
+        encoder = LibaomAV1Encoder(media, preset=args.preset, crf=args.crf, cpu_used=args.cpu_used, 
                               verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold,
                               output_dir=output_dir)
     

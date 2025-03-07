@@ -22,6 +22,16 @@ RESOLUTION = {
     "720p": 1280 * 720,
     "480p": 640 * 480
 }
+
+DEFAULT_PRESET_HEVC = {
+    "4k": "slow",
+    "2k": "slow",
+    "1080p": "slow",
+    "720p": "slow",
+    "480p": "slow"
+}
+
+'''
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
@@ -29,6 +39,8 @@ DEFAULT_PRESET_HEVC = {
     "720p": "medium",
     "480p": "fast"
 }
+'''
+
 
 DEFAULT_CRF_HEVC = {
     "4k": 20,

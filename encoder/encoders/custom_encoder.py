@@ -1,4 +1,4 @@
-from .encoder import EncodingStatus, Encoder, Av1Encoder, HevcEncoder, MediaFile
+from encoder import EncodingStatus, Encoder, Av1Encoder, HevcEncoder, MediaFile
 from typing import Type, Optional, List
 import subprocess
 import time

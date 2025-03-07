@@ -243,7 +243,7 @@ class MediaFile:
                             AudioStream(
                                 codec=codec,
                                 ffmpeg_index=index_counter, # use index counter to be compatible with ffmpeg
-                                index=index_counter, 
+                                index=index, 
                                 bit_rate=bit_rate,
                                 sample_rate=sample_rate
                             )
