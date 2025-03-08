@@ -149,9 +149,9 @@ class CRFEncoder(ABC):
                     option = fmt
                     break
             if not option:
-                self.logger.warning(f"⚠️ The encoder does not support source pixel format {video_stream.pix_fmt}. "
-                                    f"Falling back to the first format it supports: {supported_fmts[0]}")
                 option = supported_fmts[0]
+            self.logger.warning(f"⚠️ The encoder/filter does not support source pixel format {video_stream.pix_fmt}. "
+                                f"Falling back to the first format it supports: {supported_fmts[0]}")
             return option
 
     def _get_filename_suffix(self) -> str:

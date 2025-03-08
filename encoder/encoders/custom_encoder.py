@@ -109,7 +109,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             video_args = super().prepare_video_args()
 
             denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "") # Retrieve denoise settings
-
+            
             if denoise_args:
                 for stream, arg in video_args.items():
                     if 'copy' not in arg:
@@ -118,7 +118,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                         vf_format_args = ["-vf", f"format={vf_format},{denoise_args}"]
                         
                         arg.extend(vf_format_args)
-                self.logger.info(f"Applied denoise: level {denoise_args}")
+                self.logger.info(f"Applied denoise. level: {denoise_args}")
 
             return video_args
 
