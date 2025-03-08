@@ -197,7 +197,7 @@ class BatchEncoder:
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {self.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
-            encoder = CustomEncoding(media_file, delete_original=False, verify=False, 
+            encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
                                      denoise=self.denoise, fast_decode=self.fast_decode,
                                      tune=self.tune)
             status = encoder.encode_wrapper()
