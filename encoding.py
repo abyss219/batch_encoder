@@ -156,7 +156,7 @@ if __name__ == "__main__":
             print("Error: --preset must be an integer between 0 and 13 for AV1.", file=sys.stderr)
             sys.exit(1)
         
-        encoder = LibaomAV1Encoder(media, preset=av1_preset, crf=args.crf, fast_decode=args.fast_decode, tune=args.tune, 
+        encoder = SVTAV1Encoder(media, preset=av1_preset, crf=args.crf, fast_decode=args.fast_decode, tune=args.tune, 
                                    verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
                                    output_dir=output_dir)
     

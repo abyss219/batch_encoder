@@ -63,7 +63,7 @@ class SVTAV1Encoder(AV1Encode):
                 1: Optimized for PSNR (Peak Signal-to-Noise Ratio).
             fast_decode (int): Controls decoding speed optimizations (0-3).
                 0: No optimization (max efficiency, slow decode).
-                1-3: Increasing levels of optimization, reducing CPU load at the cost of compression efficiency.
+                1-2: Increasing levels of optimization, reducing CPU load at the cost of compression efficiency.        
             delete_original (bool): Whether to delete the original media file after encoding.
                 True: Removes original file if encoding is successful.
                 False (default): Keeps original file.
@@ -85,9 +85,24 @@ class SVTAV1Encoder(AV1Encode):
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
                          output_dir=output_dir, ignore_codec=ignore_codec)
         
-        self.tune = 0 if tune == 0 else 1  # Only 0 or 1 allowed
-        self.fast_decode = max(0, min(fast_decode, 3))  # Clamp between 0-3
+        if tune < 0 or tune > 2:
+            raise ValueError("Tune values must be between 0 and 2.")
+        
+        self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
+        self.fast_decode = max(0, min(fast_decode, 2))  # Clamp between 0-2
         self.logger.debug(f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"')
+            
+        
+
+    def get_fast_decode(self, video_stream:VideoStream) -> str:
+        preset = int(self.get_preset(video_stream))
+        if preset >= 5 and preset <= 10:
+            return str(self.fast_decode)
+        else:
+            self.logger.warning(f"⚠️ Fast decode is only supported for preset between 0 and 5. "
+                                "Fast decode will not be applied for stream {video_stream.index}.")
+            
+            return ""
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
         """
@@ -96,12 +111,20 @@ class SVTAV1Encoder(AV1Encode):
         """
         video_args = super().prepare_video_args('-preset')
 
-        append_args = ["-svtav1-params", f"tune={self.tune}:fast-decode={self.fast_decode}"]
 
+        
         
 
         for stream, arg in video_args.items():
             if 'copy' not in arg:
+                fast_decode = self.get_fast_decode(stream) # fast decode is only availiable for presets from 5 to 10
+                if fast_decode:
+                    fast_decode_args = f":fast-decode={self.fast_decode}"
+                else:
+                    fast_decode_args = ""
+                
+                append_args = ["-svtav1-params", f"tune={self.tune}{fast_decode_args}"]
+                
                 keyframe_interval = self.get_keyframe_interval(stream, 5)
                 keyframe_interval_args = ["-g", keyframe_interval]
                 arg.extend(keyframe_interval_args)
@@ -147,7 +170,7 @@ class LibaomAV1Encoder(AV1Encode):
         """
         return self.get_keyframe_interval(video_stream, multiplier)
 
-    def prepare_video_args(self) -> List[List[str]]:
+    def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
         """
         Prepares FFmpeg video encoding arguments specific to libaom-AV1.
         """
