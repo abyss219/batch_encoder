@@ -208,7 +208,7 @@ class MediaFile:
 
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
             info = json.loads(result.stdout)
             video_streams = []
             
@@ -296,7 +296,7 @@ class MediaFile:
         ]
         index_counter = 0 # FFmpeg assigns 0-based indexes to audio streams
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
             info = json.loads(result.stdout)
             audio_streams = []
             

@@ -307,7 +307,7 @@ class CRFEncoder(ABC):
             return EncodingStatus.SKIPPED
 
         self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
-        result = subprocess.run(ffmpeg_cmd, check=True)
+        result = subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
 
         # check size reduction
         encoded_size = os.path.getsize(self.output_tmp_file)

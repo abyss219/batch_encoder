@@ -125,7 +125,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 stderr=subprocess.DEVNULL, # Suppress stderr output
                 text=True,
                 bufsize=1,  # Line-buffered
-                universal_newlines=True
+                universal_newlines=True,
+                encoding='utf-8'
             )
 
             # Track encoding progress in real-time
