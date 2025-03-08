@@ -62,6 +62,7 @@ VIDEO_EXTENSIONS = {
 DEFAULT_MIN_SIZE = "100MB"
 DEFAULT_DENOISE = "none"
 DEFAULT_CODEC = 'hevc'
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Batch video encoding script.")
     parser.add_argument("directory", help="Directory containing videos to encode.")
@@ -80,6 +81,23 @@ def parse_arguments():
         default=DEFAULT_DENOISE,
         help=f"Apply denoising filter. Options: 'none', 'light', 'mild', 'moderate', 'heavy'. Default is '{DEFAULT_DENOISE}'."
     )
+
+    parser.add_argument(
+        "--fast-decode", 
+        type=int, 
+        choices=[0, 1, 2], 
+        default=DEFAULT_SVTAV1_FAST_DECODE, 
+        help="Optimize for decoding speed (0-3). Applies only to AV1 encoding."
+    )
+
+    parser.add_argument(
+        "--tune", 
+        type=int, 
+        choices=[0, 1, 2], 
+        default=DEFAULT_SVTAV1_TUNE, 
+        help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
+    )
+
     return parser.parse_args()
 
 
@@ -87,21 +105,23 @@ def parse_arguments():
 class BatchEncoder:
     """Handles batch encoding of videos in a directory to AV1 format with resume support."""
 
-
-    LOG_DIRECOTRY = "logs"
     STATE_FILE_PREFIX = "encoder_state"
-    LOG_FILE_PREFIX = "batch_encoder"
+    LOG_FILE_PREFIX = "batch_encoding"
     
-    def __init__(self, directory: str, min_size: Union[str, float] = DEFAULT_MIN_SIZE, force_reset:bool=True, denoise:str=None):
+    def __init__(self, directory: str, min_size: Union[str, float] = DEFAULT_MIN_SIZE, 
+                 force_reset:bool=False, denoise:str=None,
+                 fast_decode:int=1, tune:int=0):
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
         self.directory = directory
         self.min_size_bytes = self.parse_size(min_size)
         self.dir_hash = self.hash_directory(directory)  # Generate hash for directory\
-        self.log_file = os.path.join(self.LOG_DIRECOTRY, f"{self.LOG_FILE_PREFIX}_{self.dir_hash}.log")
-        self.state_file = os.path.join(self.LOG_DIRECOTRY, f"{self.STATE_FILE_PREFIX}_{self.dir_hash}.pkl")
+        self.log_file = os.path.join(LOG_DIR, f"{self.LOG_FILE_PREFIX}_{self.dir_hash}.log")
+        self.state_file = os.path.join(LOG_DIR, f"{self.STATE_FILE_PREFIX}_{self.dir_hash}.pkl")
 
         self.denoise = denoise
+        self.fast_decode = str(fast_decode)
+        self.tune = str(tune)
         
         self.video_queue = []
         self.success_encodings = set()  # Stores successfully encoded videos
@@ -176,7 +196,10 @@ class BatchEncoder:
             
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {self.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
-            encoder = CustomEncoding(media_file, delete_original=True, verify=False, denoise=self.denoise)
+            
+            encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
+                                     denoise=self.denoise, fast_decode=self.fast_decode,
+                                     tune=self.tune)
             status = encoder.encode_wrapper()
             
             if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
@@ -317,5 +340,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     CustomEncoding = get_custom_encoding_class(args.codec)
-    encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, force_reset=args.force_reset, denoise=args.denoise if args.denoise else None)
+
+    if args.codec == 'hevc':
+        encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, force_reset=args.force_reset, denoise=args.denoise if args.denoise else None)
+    else:
+        encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, 
+                               force_reset=args.force_reset, denoise=args.denoise if args.denoise else None, 
+                               fast_decode=args.fast_decode, tune=args.tune)
+
     encoder.encode_videos()

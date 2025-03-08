@@ -129,6 +129,7 @@ def parse_arguments():
         default=DEFAULT_SVTAV1_TUNE, 
         help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
     )
+    
     return parser.parse_args()
 
 if __name__ == "__main__":

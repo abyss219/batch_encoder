@@ -89,20 +89,21 @@ class SVTAV1Encoder(AV1Encode):
             raise ValueError("Tune values must be between 0 and 2.")
         
         self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
-        self.fast_decode = max(0, min(fast_decode, 2))  # Clamp between 0-2
+        self.fast_decode = max(0, min(int(fast_decode), 2))  # Clamp between 0-2
         self.logger.debug(f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"')
             
         
 
     def get_fast_decode(self, video_stream:VideoStream) -> str:
-        preset = int(self.get_preset(video_stream))
-        if preset >= 5 and preset <= 10:
-            return str(self.fast_decode)
-        else:
-            self.logger.warning(f"⚠️ Fast decode is only supported for preset between 0 and 5. "
-                                "Fast decode will not be applied for stream {video_stream.index}.")
+        # preset = int(self.get_preset(video_stream))
+        # if preset >= 5 and preset <= 10:
+        #     return str(self.fast_decode)
+        # else:
+        #     self.logger.warning(f"⚠️ Fast decode is only supported for preset between 0 and 5. "
+        #                         "Fast decode will not be applied for stream {video_stream.index}.")
             
-            return ""
+        #     return ""
+        return str(self.fast_decode)
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
         """
@@ -110,10 +111,6 @@ class SVTAV1Encoder(AV1Encode):
         Adds film grain synthesis, fast decoding, and keyframe placement options.
         """
         video_args = super().prepare_video_args('-preset')
-
-
-        
-        
 
         for stream, arg in video_args.items():
             if 'copy' not in arg:

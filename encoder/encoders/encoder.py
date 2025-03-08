@@ -300,7 +300,7 @@ class CRFEncoder(ABC):
             EncodingStatus: The status of encoding.
         """
         ffmpeg_cmd = self.prepare_cmd()
-        self.logger.info(f"Final ffmpeg arg: {" ".join(ffmpeg_cmd)}")
+        self.logger.info(f"🚀 Final ffmpeg arg: {" ".join(ffmpeg_cmd)}")
 
         if not ffmpeg_cmd:
             self.logger.warning(f"⚠️ Skipping encoding: {self.media_file.file_path} (Already in desired format).")
