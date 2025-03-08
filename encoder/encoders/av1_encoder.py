@@ -85,7 +85,7 @@ class SVTAV1Encoder(AV1Encode):
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
                          output_dir=output_dir, ignore_codec=ignore_codec)
         
-        if tune < 0 or tune > 2:
+        if int(tune) < 0 or int(tune) > 2:
             raise ValueError("Tune values must be between 0 and 2.")
         
         self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]

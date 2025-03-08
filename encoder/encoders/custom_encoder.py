@@ -46,7 +46,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         # List of efficient codecs that do not require re-encoding
         EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
-        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, verify:bool=False, ):
+        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, verify:bool=False, **kwargs):
             """
             Initializes the custom encoding class.
             
@@ -56,7 +56,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 delete_original (bool): If True, deletes the original file after encoding. Default is True.
                 verify (bool): If True, performs a verification check after encoding. Default is False.
             """
-            super().__init__(media_file, delete_original=delete_original, verify=verify, ignore_codec=self.EFFICIENT_CODEC)
+            super().__init__(media_file, delete_original=delete_original, verify=verify, 
+                             ignore_codec=self.EFFICIENT_CODEC, **kwargs)
 
             self.denoise = denoise # Stores the selected denoising level
 
@@ -78,7 +79,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
 
             # Modify the command by inserting denoise and progress args before the output file
-            cmd = cmd[:-1] + denoise_args + pipeline_args + cmd[-1]
+            cmd = cmd[:-1] + denoise_args + pipeline_args + cmd[-1:]
             return cmd
 
         def get_duration(self) -> Optional[float]:

@@ -197,15 +197,24 @@ class BatchEncoder:
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {self.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
-            encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
+            encoder = CustomEncoding(media_file, delete_original=False, verify=True, 
                                      denoise=self.denoise, fast_decode=self.fast_decode,
                                      tune=self.tune)
             status = encoder.encode_wrapper()
             
             if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
+                encoded_size = os.path.getsize(encoder.new_file_path)
                 self.logger.info(encoder.new_file_path)
-                
+
+                # log for size reduction
+                self.total_original_size += original_size
+                self.total_encoded_size += encoded_size
+                self.encoded_video_count += 1
+                size_reduction = 100 * (1 - (encoded_size / original_size))
+
                 self.success_encodings.add(media_file.file_path)
+
+                self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
             elif status == EncodingStatus.SKIPPED:
                 self.skipped_videos.add(media_file.file_path)
@@ -225,11 +234,11 @@ class BatchEncoder:
 
         self.logger.info(
             "\n" + "-" * 50 + "\n"
-            f"📊 All tasks finished. Final average size reduction (current run only): {final_avg_reduction:.2f}%. "
+            f"📊 All tasks finished. Final average size reduction: {final_avg_reduction:.2f}%. "
             f"✅ Successful: {len(self.success_encodings)}, "
             f"❌ Failed: {len(self.failed_encodings)}, "
             f"⏭️ Skipped: {len(self.skipped_videos)}, "
-            f"💾 Total disk space saved (current run only): {self.human_readable_size(self.total_original_size - self.total_encoded_size)}."
+            f"💾 Total disk space saved: {self.human_readable_size(self.total_original_size - self.total_encoded_size)}."
         )
 
     def save_state(self):
