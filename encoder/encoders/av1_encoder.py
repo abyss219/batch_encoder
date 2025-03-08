@@ -36,6 +36,8 @@ class SVTAV1Encoder(AV1Encode):
     DEFAULT_CRF = DEFAULT_CRF_SVTAV1
 
     DEFAULT_PRESET = DEFAULT_PRESET_SVTAV1
+    
+    SUPPORTED_PIXEL_FORMATS = ["yuv420p", "yuv420p10le"]
 
     def __init__(self, media_file: MediaFile, preset: Union[str, int, None] = None, crf: Union[str, int, None] = None,
                  tune:int = DEFAULT_SVTAV1_TUNE, fast_decode: int = DEFAULT_SVTAV1_FAST_DECODE,
@@ -138,7 +140,15 @@ class LibaomAV1Encoder(AV1Encode):
     libaom is the reference implementation of AV1, providing a variety of rate-control options.
     """
 
-    # 8-10% quality loss
+    SUPPORTED_PIXEL_FORMATS = [
+        "yuv420p", "yuv422p", "yuv444p", "gbrp",
+        "yuv420p10le", "yuv422p10le", "yuv444p10le",
+        "yuv420p12le", "yuv422p12le", "yuv444p12le",
+        "gbrp10le", "gbrp12le",
+        "gray", "gray10le", "gray12le"
+    ]
+
+
     DEFAULT_CRF = DEFAULT_CRF_LIBAMOAV1
 
     DEFAULT_PRESET = DEFAULT_PRESET_LIBAMOAV1

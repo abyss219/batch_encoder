@@ -33,6 +33,8 @@ class CRFEncoder(ABC):
 
     DEFAULT_CRF:dict = None
 
+    SUPPORTED_PIXEL_FORMATS:list = None
+
     def __init__(self, media_file: MediaFile, encoder: str, 
                  crf: Union[str, int, None] = None, delete_original: bool=DEFAULT_DELETE_ORIGIN, 
                  verify:bool=DEFAULT_VERIFY, delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
@@ -137,6 +139,21 @@ class CRFEncoder(ABC):
         crf = self.crf if self.crf is not None else self.DEFAULT_CRF[video_stream.get_readable_resolution_or_default()]
         return str(crf)
 
+    def get_pix_fmt(self, video_stream:VideoStream, supported_fmts:list) -> str:
+        if video_stream.pix_fmt in supported_fmts:
+            return video_stream.pix_fmt
+        else:
+            option = ""
+            for fmt in supported_fmts:
+                if video_stream.pix_fmt.startswith(fmt):
+                    option = fmt
+                    break
+            if not option:
+                self.logger.warning(f"⚠️ The encoder does not support source pixel format {video_stream.pix_fmt}. "
+                                    f"Falling back to the first format it supports: {supported_fmts[0]}")
+                option = supported_fmts[0]
+            return option
+
     def _get_filename_suffix(self) -> str:
         """
         Generates a filename suffix based on encoding settings.
@@ -204,7 +221,8 @@ class CRFEncoder(ABC):
             else:
                 crf = self.get_crf(video_stream)
                 sub_args.extend([self.encoder,
-                                   "-crf", crf
+                                   "-crf", crf,
+                                   "-pix_fmt", self.get_pix_fmt(video_stream, self.SUPPORTED_PIXEL_FORMATS)
                                    ])
                 crf_log.append(crf)
 

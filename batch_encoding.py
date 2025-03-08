@@ -174,7 +174,7 @@ class BatchEncoder:
             try:
                 file_size = os.path.getsize(file)
                 if file_size < self.min_size_bytes:
-                    self.logger.debug(f"Skipping {file} (Size: {self.human_readable_size(file_size)}) - Below threshold.")
+                    self.logger.debug(f"Skipping {file} (Size: {CustomEncoding.human_readable_size(file_size)}) - Below threshold.")
                     self.skipped_videos.add(file)
                     continue
 
@@ -189,13 +189,15 @@ class BatchEncoder:
         self.video_queue = temp_queue
         self.logger.info(f"Prepared {len(self.video_queue)} videos for encoding.")
     
+    
+    
     def encode_videos(self):
         """Encode videos from the priority queue."""
         while self.video_queue:
             neg_file_size, _, media_file = heapq.heappop(self.video_queue)
             
             original_size = -neg_file_size
-            self.logger.info(f"🎥 Encoding {media_file.file_path} of size {self.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
+            self.logger.info(f"🎥 Encoding {media_file.file_path} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
             encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
                                      denoise=self.denoise, fast_decode=self.fast_decode,
@@ -214,7 +216,7 @@ class BatchEncoder:
 
                 self.success_encodings.add(media_file.file_path)
 
-                self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+                self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({CustomEncoding.human_readable_size(original_size)} → {CustomEncoding.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
             elif status == EncodingStatus.SKIPPED:
                 self.skipped_videos.add(media_file.file_path)
@@ -238,7 +240,7 @@ class BatchEncoder:
             f"✅ Successful: {len(self.success_encodings)}, "
             f"❌ Failed: {len(self.failed_encodings)}, "
             f"⏭️ Skipped: {len(self.skipped_videos)}, "
-            f"💾 Total disk space saved: {self.human_readable_size(self.total_original_size - self.total_encoded_size)}."
+            f"💾 Total disk space saved: {CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size)}."
         )
 
     def save_state(self):
@@ -314,18 +316,6 @@ class BatchEncoder:
             return int(float(value) * size_map.get(unit, 1))
         
         raise ValueError(f"Invalid size format: {size}")
-
-    @staticmethod
-    def human_readable_size(size_in_bytes):
-        """Convert bytes into a human-readable format (GB, MB, KB) using binary (1024-based) system."""
-        if size_in_bytes >= 1_073_741_824:  # 1024 ** 3
-            return f"{size_in_bytes / 1_073_741_824:.2f} GB"
-        elif size_in_bytes >= 1_048_576:  # 1024 ** 2
-            return f"{size_in_bytes / 1_048_576:.2f} MB"
-        elif size_in_bytes >= 1024:
-            return f"{size_in_bytes / 1024:.2f} KB"
-        else:
-            return f"{size_in_bytes} B"
 
 
 if __name__ == "__main__":

@@ -11,6 +11,13 @@ class HevcEncoder(PresetCRFEncoder):
     such as selecting the x265 encoder (`libx265`) and ensuring proper stream tagging.
     """
 
+    SUPPORTED_PIXEL_FORMATS = [
+        "yuv420p", "yuvj420p", "yuv422p", "yuvj422p", "yuv444p", "yuvj444p", "gbrp",
+        "yuv420p10le", "yuv422p10le", "yuv444p10le", "gbrp10le",
+        "yuv420p12le", "yuv422p12le", "yuv444p12le", "gbrp12le",
+        "gray", "gray10le", "gray12le"
+    ]
+
     DEFAULT_PRESET = DEFAULT_PRESET_HEVC
 
     DEFAULT_CRF = DEFAULT_CRF_HEVC

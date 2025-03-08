@@ -31,6 +31,7 @@ class VideoStream:
     height: Optional[int]
     frame_rate: Optional[float]
     duration: Optional[float]
+    pix_fmt: Optional[str]
 
     def get_readable_resolution_or_default(self, default=DEFAULT_RESOLUTION, tolerance = DEFAULT_RESOLUTION_TOLERANCE):
         """
@@ -233,6 +234,8 @@ class MediaFile:
                     height = stream["height"]
 
                     duration=stream.get("duration")
+                    
+                    pix_fmt = stream.get('pix_fmt')
 
                     # Extract frame rate from string format (e.g., "30000/1001")
                     frame_rate_str = stream.get("r_frame_rate")
@@ -252,7 +255,8 @@ class MediaFile:
                         width=width,
                         height=height,
                         frame_rate=frame_rate,
-                        duration=duration
+                        duration=duration,
+                        pix_fmt=pix_fmt
                     )
 
 

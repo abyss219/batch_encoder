@@ -1,9 +1,9 @@
 from .av1_encoder import SVTAV1Encoder
 from .hevc_encoder import HevcEncoder
 from .encoder import PresetCRFEncoder
-from ..media import MediaFile
+from ..media import MediaFile, VideoStream
 from ..config import EncodingStatus
-from typing import Type, Optional, List
+from typing import Type, Optional, List, Dict
 import subprocess
 import time
 import re
@@ -43,6 +43,23 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
         }
 
+        NLMEANS_PIXEL_FORMATS = [
+            "yuv420p",  # 4:2:0 chroma subsampling, 8-bit, YUV
+            "yuv422p",  # 4:2:2 chroma subsampling, 8-bit, YUV
+            "yuv410p",  # 4:1:0 chroma subsampling, 8-bit, YUV
+            "yuv411p",  # 4:1:1 chroma subsampling, 8-bit, YUV
+            "yuv440p",  # 4:4:0 chroma subsampling, 8-bit, YUV
+            "yuv444p",  # 4:4:4 chroma subsampling, 8-bit, YUV
+            "yuvj444p", # 4:4:4 full-range chroma subsampling, 8-bit, YUV
+            "yuvj440p", # 4:4:0 full-range chroma subsampling, 8-bit, YUV
+            "yuvj422p", # 4:2:2 full-range chroma subsampling, 8-bit, YUV
+            "yuvj420p", # 4:2:0 full-range chroma subsampling, 8-bit, YUV
+            "yuvj411p", # 4:1:1 full-range chroma subsampling, 8-bit, YUV
+            "gray8",    # Grayscale, 8-bit
+            "gbrp"      # Planar RGB, 8-bit
+        ]
+
+
         # List of efficient codecs that do not require re-encoding
         EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
@@ -69,17 +86,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 Optional[List[str]]: The FFmpeg command arguments, or None if encoding is skipped.
             """
             cmd = super().prepare_cmd()
-            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "") # Retrieve denoise settings
-            if denoise_args:
-                self.logger.info(f"Applied denoise: level {self.denoise}, arg: {denoise_args}")
-                denoise_args = ["-vf", denoise_args] # Apply denoising filter
-            else:
-                denoise_args = []
             
             pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
 
             # Modify the command by inserting denoise and progress args before the output file
-            cmd = cmd[:-1] + denoise_args + pipeline_args + cmd[-1:]
+            cmd = cmd[:-1] + pipeline_args + cmd[-1:]
             return cmd
 
         def get_duration(self) -> Optional[float]:
@@ -90,6 +101,26 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 Optional[float]: Duration of the video file.
             """
             return float(self.media_file.video_info[0].duration)
+            
+        def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
+            """
+            Prepares FFmpeg video encoding arguments specific to libaom-AV1.
+            """
+            video_args = super().prepare_video_args()
+
+            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "") # Retrieve denoise settings
+
+            if denoise_args:
+                for stream, arg in video_args.items():
+                    if 'copy' not in arg:
+                        vf_format = self.get_pix_fmt(stream, self.NLMEANS_PIXEL_FORMATS)
+                        
+                        vf_format_args = ["-vf", f"format={vf_format},{denoise_args}"]
+                        
+                        arg.extend(vf_format_args)
+                self.logger.info(f"Applied denoise: level {denoise_args}")
+
+            return video_args
 
         def _encode(self) -> EncodingStatus:
             """
