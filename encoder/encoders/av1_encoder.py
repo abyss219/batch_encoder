@@ -33,9 +33,9 @@ class SVTAV1Encoder(AV1Encode):
     range of encoding optimizations, including tuning for perceptual quality and decoding
     speed.
     """
-    DEFAULT_CRF = DEFAULT_CRF_AV1
+    DEFAULT_CRF = DEFAULT_CRF_SVTAV1
 
-    DEFAULT_PRESET = DEFAULT_PRESET_AV1
+    DEFAULT_PRESET = DEFAULT_PRESET_SVTAV1
 
     def __init__(self, media_file: MediaFile, preset: Union[str, int, None] = None, crf: Union[str, int, None] = None,
                  tune:int = DEFAULT_SVTAV1_TUNE, fast_decode: int = DEFAULT_SVTAV1_FAST_DECODE,
@@ -139,9 +139,9 @@ class LibaomAV1Encoder(AV1Encode):
     """
 
     # 8-10% quality loss
-    DEFAULT_CRF = DEFAULT_CRF_AV1
+    DEFAULT_CRF = DEFAULT_CRF_LIBAMOAV1
 
-    DEFAULT_PRESET = DEFAULT_PRESET_AV1
+    DEFAULT_PRESET = DEFAULT_PRESET_LIBAMOAV1
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
                  delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 

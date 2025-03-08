@@ -203,18 +203,9 @@ class BatchEncoder:
             status = encoder.encode_wrapper()
             
             if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
-                encoded_size = os.path.getsize(encoder.new_file_path)
                 self.logger.info(encoder.new_file_path)
                 
-                # log for size reduction
-                self.total_original_size += original_size
-                self.total_encoded_size += encoded_size
-                self.encoded_video_count += 1
-                size_reduction = 100 * (1 - (encoded_size / original_size))
-
                 self.success_encodings.add(media_file.file_path)
-
-                self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
             elif status == EncodingStatus.SKIPPED:
                 self.skipped_videos.add(media_file.file_path)
