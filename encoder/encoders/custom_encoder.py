@@ -198,4 +198,17 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 self.logger.error(f"❌ Encoding failed: FFmpeg returned {process.returncode}")
                 return EncodingStatus.FAILED
 
+        def _get_filename_suffix(self) -> str:
+            """
+            Generates a filename suffix based on encoding settings.
+            
+            The suffix contains the encoder class name and CRF value.
+            
+            Returns:
+                str: The filename suffix.
+            """
+            suffix = super()._get_filename_suffix()
+            suffix = suffix.replace(self.__class__.__name__, self.__class__.__bases__[0].__name__)
+            return suffix
+
     return CustomEncoding

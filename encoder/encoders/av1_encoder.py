@@ -83,6 +83,8 @@ class SVTAV1Encoder(AV1Encode):
         if preset:
             preset = max(0, min(int(preset), 13)) # Note that preset 13 is only meant for debugging and running fast convex-hull encoding.
         
+        self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
+        
         super().__init__(media_file, encoder="libsvtav1", preset=preset, crf=crf,
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
                          check_size=check_size,
@@ -91,7 +93,7 @@ class SVTAV1Encoder(AV1Encode):
         if int(tune) < 0 or int(tune) > 2:
             raise ValueError("Tune values must be between 0 and 2.")
         
-        self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
+        
         self.fast_decode = max(0, min(int(fast_decode), 2))  # Clamp between 0-2
         self.logger.debug(f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"')
             
