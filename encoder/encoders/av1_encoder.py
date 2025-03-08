@@ -27,38 +27,54 @@ class AV1Encode(PresetCRFEncoder, ABC):
 class SVTAV1Encoder(AV1Encode):
     """
     Handles encoding using the SVT-AV1 encoder.
+    
     SVT-AV1 is an efficient and scalable AV1 encoder developed by Intel and Netflix,
-    providing a balance between speed and compression efficiency.
+    providing a balance between speed and compression efficiency. It allows for a wide
+    range of encoding optimizations, including tuning for perceptual quality and decoding
+    speed.
     """
     DEFAULT_CRF = DEFAULT_CRF_AV1
 
     DEFAULT_PRESET = DEFAULT_PRESET_AV1
 
     def __init__(self, media_file: MediaFile, preset: Union[str, int, None] = None, crf: Union[str, int, None] = None,
-                 tune:int = 0, fast_decode: int = 1, film_grain: int = 0, film_grain_denoise: bool = True,
-                 delete_original: bool = False, verify: bool = False, 
+                 tune:int = DEFAULT_SVTAV1_TUNE, fast_decode: int = DEFAULT_SVTAV1_FAST_DECODE,
+                 delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 
                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
                  ignore_codec:Set[str]={'av1'}, **kwargs):
         """
         Initializes the SVT-AV1 Encoder with user-defined encoding parameters.
         
         - SVT-AV1 supports high-performance encoding with various presets.
-        - Uses film grain synthesis to enhance the perceived quality of grainy videos.
         - Supports tuning for visual quality (sharpness) and decoding speed optimizations.
         
         Args:
             media_file (MediaFile): The media file to be encoded.
-            preset (Optional[int]): Encoding speed vs. efficiency (0-13). Lower values mean better compression but slower encoding.
-            crf (Optional[int]): Constant Rate Factor (0-63). Lower values produce higher quality but larger file sizes.
-            tune (int): Quality tuning mode (0 = sharpness, 1 = PSNR). Default is 0 (sharpness).
-            fast_decode (int): Optimize for decoding speed (0-3). Higher values make playback easier at the cost of efficiency.
-            film_grain (int): Film Grain Synthesis level (0-50). Higher values add more grain to the video.
-            film_grain_denoise (bool): Enables or disables film grain denoising before encoding.
+            preset (Optional[int]): Determines encoding speed vs. efficiency (0-13).
+                Lower values provide better compression at the cost of slower encoding.
+                Higher values prioritize speed over compression.
+                Preset 13 is mainly for debugging and not recommended for normal usage.
+            crf (Optional[int]): Constant Rate Factor (0-63). Controls the tradeoff between quality and file size.
+                Lower values mean higher quality but larger file sizes.
+                CRF 35 is considered a good default for balanced quality.
+                CRF 0 is currently unsupported for lossless encoding in SVT-AV1.
+            tune (int): Quality tuning mode (0 or 1).
+                0 (default): Optimized for perceptual sharpness.
+                1: Optimized for PSNR (Peak Signal-to-Noise Ratio).
+            fast_decode (int): Controls decoding speed optimizations (0-3).
+                0: No optimization (max efficiency, slow decode).
+                1-3: Increasing levels of optimization, reducing CPU load at the cost of compression efficiency.
             delete_original (bool): Whether to delete the original media file after encoding.
-            verify (bool): Whether to verify encoding quality with VMAF.
-            delete_threshold (float): Threshold for deciding whether to delete the original file.
-            output_dir (Optional[str]): Directory for the output files.
-            ignore_codec (Set[str]): Codecs to be ignored for re-encoding (defaults to skipping AV1 re-encoding).
+                True: Removes original file if encoding is successful.
+                False (default): Keeps original file.
+            verify (bool): Whether to verify encoding quality using VMAF (Video Multi-Method Assessment Fusion).
+                True: Runs a quality check before deleting the original file.
+                False (default): Skips verification.
+            delete_threshold (float): Minimum acceptable VMAF score to allow deletion of the original file.
+            output_dir (Optional[str]): Directory for storing encoded files.
+                Defaults to the same directory as the input file.
+            ignore_codec (Set[str]): Codecs that should be skipped for re-encoding.
+                Defaults to ignoring AV1 streams to prevent redundant encoding.
         """
         if crf:
             crf = max(0, min(int(crf), 63)) # Clamp between 0-63
@@ -71,8 +87,6 @@ class SVTAV1Encoder(AV1Encode):
         
         self.tune = 0 if tune == 0 else 1  # Only 0 or 1 allowed
         self.fast_decode = max(0, min(fast_decode, 3))  # Clamp between 0-3
-        self.film_grain = max(0, min(film_grain, 50))  # Clamp between 0-50
-        self.film_grain_denoise = 0 if film_grain_denoise == 0 else 1  # Only 0 or 1 allowed
         self.logger.debug(f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"')
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
@@ -82,7 +96,7 @@ class SVTAV1Encoder(AV1Encode):
         """
         video_args = super().prepare_video_args('-preset')
 
-        append_args = ["-svtav1-params", f"tune={self.tune}:fast-decode={self.fast_decode}:film-grain={self.film_grain}:film-grain-denoise={self.film_grain_denoise}"]
+        append_args = ["-svtav1-params", f"tune={self.tune}:fast-decode={self.fast_decode}"]
 
         
 
@@ -93,7 +107,7 @@ class SVTAV1Encoder(AV1Encode):
                 arg.extend(keyframe_interval_args)
                 arg.extend(append_args)
         
-        self.logger.info(f'🔹 Tune: {self.tune} | Fast Decode: {self.fast_decode} | Film Grain: {self.film_grain} | Film Grain Denoise: {self.film_grain_denoise}')
+        self.logger.info(f'🔹 Tune: {self.tune} | Fast Decode: {self.fast_decode}')
 
         return video_args
 
@@ -110,7 +124,7 @@ class LibaomAV1Encoder(AV1Encode):
     DEFAULT_PRESET = DEFAULT_PRESET_AV1
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
-                 delete_original: bool = False, verify: bool = False, 
+                 delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 
                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None, 
                  ignore_codec:Set[str]={'av1'}, **kwargs):
         """

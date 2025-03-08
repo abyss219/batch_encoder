@@ -8,7 +8,28 @@ from ..config import *
 from ..media import MediaFile, VideoStream, AudioStream
 
 class CRFEncoder(ABC):
-    """Base class for CRF video encoding."""
+    """
+    Base class for Constant Rate Factor (CRF) video encoding to MP4 files.
+
+    This class provides a flexible and automated way to encode video files using FFmpeg
+    with CRF-based compression. The CRF method ensures that video quality is maintained
+    while achieving optimal file size reduction. The encoder supports multiple codecs,
+    handles resolution-based CRF selection, and ensures smooth encoding with various
+    post-processing features like verification, cleanup, and temporary file management.
+
+    Key Features:
+    - Supports CRF encoding for efficient video compression.
+    - Dynamically selects CRF values based on video resolution.
+    - Automatically generates unique output filenames to prevent overwriting.
+    - Provides verification through Video Multi-Method Assessment Fusion (VMAF).
+    - Deletes original files post-encoding if enabled.
+    - Preserves audio and subtitle streams while optimizing video quality.
+    - Offers codec-based skipping to avoid redundant re-encoding.
+
+    Usage:
+    - Subclass this base encoder to implement specific encoders like `HevcEncoder` or `AV1Encoder`.
+    - Override methods for codec-specific encoding strategies.
+    """
 
     DEFAULT_CRF:dict = None
 

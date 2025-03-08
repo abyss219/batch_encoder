@@ -61,7 +61,7 @@ VIDEO_EXTENSIONS = {
 
 DEFAULT_MIN_SIZE = "100MB"
 DEFAULT_DENOISE = "none"
-
+DEFAULT_CODEC = 'hevc'
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Batch video encoding script.")
     parser.add_argument("directory", help="Directory containing videos to encode.")

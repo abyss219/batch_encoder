@@ -4,6 +4,9 @@ import sys
 from encoder import *
 from encoder.config import *
 
+DEFAULT_CODEC = 'hevc'
+VALID_HEVC_PRESETS = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"}
+
 def parse_arguments():
     """
     Parses command-line arguments using argparse.
@@ -16,10 +19,11 @@ def parse_arguments():
     - Codec selection (HEVC or AV1)
     - CRF (Constant Rate Factor) value for quality control
     - Preset for encoding speed vs efficiency
-    - CPU usage tuning (only for AV1)
     - Option to delete the original video after encoding
     - Output directory selection
     - Verify encoded file quality using VMAF before deleting the original.
+    - Fast decode optimization for AV1
+    - Quality tuning mode for AV1
     """
     parser = argparse.ArgumentParser(
         description="Convert video to HEVC (H.265) or AV1 using FFmpeg."
@@ -41,7 +45,6 @@ def parse_arguments():
             "Options:\n"
             "  hevc - High Efficiency Video Coding (H.265) [default]\n"
             "  av1  - AV1 codec for better compression at lower bitrates\n"
-            "Note: AV1 encoding is significantly slower than HEVC."
         )
     )
 
@@ -53,8 +56,8 @@ def parse_arguments():
             "Set the CRF (Constant Rate Factor) value for controlling video quality.\n"
             "Lower values give better quality but larger file sizes.\n"
             "Typical ranges:\n"
-            "  HEVC: 0-51 (default: 24, good quality: 18-28)\n"
-            "  AV1:  0-63 (default: 28, good quality: 20-35)\n"
+            "  HEVC: 0-51\n"
+            "  AV1:  0-63\n"
             "Note: 0 means lossless, but file size will be huge."
         )
     )
@@ -64,25 +67,8 @@ def parse_arguments():
         "--preset", 
         help=(
             "Set the encoding speed preset.\n"
-            "Faster presets encode quickly but result in larger file sizes.\n"
-            "Slower presets optimize compression for better quality at the same bitrate.\n"
-            "Defaults:\n"
-            "  HEVC: slow (use medium, slow, slower, veryslow, etc.)\n"
-            "  AV1:  slow (use veryslow, slow, medium, fast, etc.)\n"
-        )
-    )
-
-    # Optional argument: CPU usage tuning for AV1 encoding
-    parser.add_argument(
-        "--cpu-used", 
-        type=int, 
-        help=(
-            "Set the AV1 encoder CPU usage level (only applies to AV1 encoding).\n"
-            "Higher values result in faster encoding but worse compression efficiency.\n"
-            "Typical range: 0-8 (default: 4)\n"
-            "  0  - Best compression, extremely slow encoding\n"
-            "  4  - Balanced (default)\n"
-            "  8  - Fastest, least efficient compression"
+            "For HEVC: A string value (ultrafast, superfast, veryfast, etc.).\n"
+            "For AV1: An integer (0-13), where lower values mean slower but better compression."
         )
     )
 
@@ -128,29 +114,50 @@ def parse_arguments():
         )
     )
 
+    parser.add_argument(
+        "--fast-decode", 
+        type=int, 
+        choices=range(0, 4), 
+        default=DEFAULT_SVTAV1_FAST_DECODE, 
+        help="Optimize for decoding speed (0-3). Applies only to AV1 encoding."
+    )
+    
+    parser.add_argument(
+        "--tune", 
+        type=int, 
+        choices=[0, 1], 
+        default=DEFAULT_SVTAV1_TUNE, 
+        help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
+    )
     return parser.parse_args()
 
 if __name__ == "__main__":
-    if not check_ffmpeg_installed():
-        print("Error: ffmpeg not installed.")
-        sys.exit(1)
-
     args = parse_arguments()
     
-    if not os.path.exists(args.input_file):
-        print("Error: Input file does not exist.", file=sys.stderr)
+    try:
+        media = MediaFile(args.input_file)
+    except ValueError:
         sys.exit(1)
-    
-    media = MediaFile(args.input_file)
     output_dir = args.output_path if args.output_path else os.path.dirname(args.input_file)
-    
+
     if args.codec == "hevc":
-        encoder = HevcEncoder(media, preset=args.preset, crf=args.crf, 
-                               verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
-                               output_dir=output_dir)
-    else:
-        encoder = LibaomAV1Encoder(media, preset=args.preset, crf=args.crf, cpu_used=args.cpu_used, 
-                              verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold,
+        if not isinstance(args.preset, str) or args.preset not in VALID_HEVC_PRESETS:
+            print("Error: --preset must be one of the valid HEVC presets.", file=sys.stderr)
+            sys.exit(1)
+        encoder = HevcEncoder(media, preset=args.preset, crf=args.crf, verify=args.verify, 
+                              delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
                               output_dir=output_dir)
+    else:
+        try:
+            av1_preset = int(args.preset)
+            if av1_preset < 0 or av1_preset > 13:
+                raise ValueError
+        except (ValueError, TypeError):
+            print("Error: --preset must be an integer between 0 and 13 for AV1.", file=sys.stderr)
+            sys.exit(1)
+        
+        encoder = LibaomAV1Encoder(media, preset=av1_preset, crf=args.crf, fast_decode=args.fast_decode, tune=args.tune, 
+                                   verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
+                                   output_dir=output_dir)
     
     encoder.encode_wrapper()

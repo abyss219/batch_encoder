@@ -1,22 +1,31 @@
 from enum import Enum
 
-LOG_DIR = "logs"
-
-DEFAULT_DELETE_THRESHOLD = 90.0
-DEFAULT_DELETE_ORIGIN = False
-DEFAULT_RESOLUTION_TOLERANCE = 0.05
-DEFAULT_RESOLUTION = '1080p'
-DEFAULT_CODEC = "hevc"
-DEFAULT_FRAME_RATE = 30 # used in get_maximum_keyframe_interval
-DEFAULT_VERIFY = False
-DEFAULT_AUDIO_BIT_RATE = "128k"
-
 class EncodingStatus(Enum):
-    SKIPPED = "skipped"
-    SUCCESS = "success"
-    FAILED = "failed"
-    LOWQUALITY = "low quality"
+    SKIPPED = "skipped" # Encoding was not necessary (e.g., already in the correct format).
+    SUCCESS = "success" # Encoding completed successfully.
+    FAILED = "failed" # Encoding process encountered an error.
+    LOWQUALITY = "low quality" # The encoded video did not meet quality expectations.
 
+LOG_DIR = "logs" # Directory path where log files will be stored for encoding logs.
+
+# Encoding and Verification Settings
+DEFAULT_DELETE_THRESHOLD = 90.0 # Minimum VMAF score required to delete the original file.
+DEFAULT_DELETE_ORIGIN = False # If True, deletes the original file after encoding to save space.
+DEFAULT_VERIFY = False # If True, performs a verification check using VMAF before deleting the original file.
+
+# Video Processing Defaults
+DEFAULT_RESOLUTION_TOLERANCE = 0.05 # Allows minor differences in resolution before deciding to re-encode.
+DEFAULT_RESOLUTION = '1080p' # Default resolution to assume if video resolution is unknown.
+DEFAULT_FRAME_RATE = 30 # Default frame rate used when a video's frame rate is not available (used in key frame calculations).
+
+# Audio Encoding Defaults
+DEFAULT_AUDIO_BIT_RATE = "128k" # Default bitrate for encoding audio streams when no specific bitrate is provided.
+
+# SVT-AV1 Specific Defaults
+DEFAULT_SVTAV1_TUNE = 1 # Default tuning mode for SVT-AV1 (0 = sharpness, 1 = PSNR optimization).
+DEFAULT_SVTAV1_FAST_DECODE = 1 # Default fast decode setting (0-3), reducing CPU load at the cost of compression efficiency.
+
+# Resolution Mapping - Maps resolution labels (e.g., "1080p") to their corresponding pixel counts.
 RESOLUTION = {
     "4k": 3840 * 2160,
     "2k": 2560 * 1440,
@@ -24,7 +33,7 @@ RESOLUTION = {
     "720p": 1280 * 720,
     "480p": 640 * 480
 }
-
+ # Encoder Defaults - HEVC preset settings determine encoding speed vs. compression efficiency.
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
@@ -33,17 +42,7 @@ DEFAULT_PRESET_HEVC = {
     "480p": "slow"
 }
 
-'''
-DEFAULT_PRESET_HEVC = {
-    "4k": "slow",
-    "2k": "slow",
-    "1080p": "medium",
-    "720p": "medium",
-    "480p": "fast"
-}
-'''
-
-
+# CRF (Constant Rate Factor) settings for HEVC encoding. Lower values mean higher quality and larger file sizes.
 DEFAULT_CRF_HEVC = {
     "4k": 20,
     "2k": 21,
@@ -52,7 +51,7 @@ DEFAULT_CRF_HEVC = {
     "480p": 26
 }
 
-
+# Preset settings for AV1 encoding, where lower values offer better compression at the cost of speed.
 DEFAULT_PRESET_AV1 = {
     "4k": 3,
     "2k": 3,
@@ -61,7 +60,7 @@ DEFAULT_PRESET_AV1 = {
     "480p": 6
 }
 
-
+# CRF settings for AV1 encoding. Lower values mean better quality and larger file sizes.
 DEFAULT_CRF_AV1 = {
     "4k": 22,
     "2k": 23,

@@ -1,31 +1,41 @@
-from encoder import EncodingStatus, Encoder, Av1Encoder, HevcEncoder, MediaFile
+from .av1_encoder import SVTAV1Encoder
+from .hevc_encoder import HevcEncoder
+from .encoder import PresetCRFEncoder
+from ..media import MediaFile
+from ..config import EncodingStatus
 from typing import Type, Optional, List
 import subprocess
 import time
 import re
 from tqdm import tqdm
 
-def get_custom_encoding_class(codec: str) -> Type[Encoder]:
+def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
     """
-    Dynamically create a CustomEncoding class that inherits from HevcEncoding or Av1Encoding.
+    Dynamically creates a custom encoding class that inherits from either HevcEncoder or AV1Encoder,
+    based on the specified codec type.
     
-    :param codec: The codec type ("hevc" or "av1").
-    :return: A dynamically created class that inherits from Encoding.
-    :raises ValueError: If an unknown codec is provided.
+    Args:
+        codec (str): The codec type to use ("hevc" or "av1").
+    
+    Returns:
+        Type[PresetCRFEncoder]: A dynamically generated class inheriting from the appropriate encoder.
+    
+    Raises:
+        ValueError: If an unsupported codec is provided.
     """
     if codec not in {"hevc", "av1"}:
         raise ValueError(f"❌ Invalid codec: '{codec}'. Supported codecs: 'hevc', 'av1'.")
 
-    parent_class: Type[Encoder] = HevcEncoder if codec == "hevc" else Av1Encoder
+    # Selects the parent class based on the codec type
+    parent_class: Type[PresetCRFEncoder] = HevcEncoder if codec == "hevc" else SVTAV1Encoder
 
     class CustomEncoding(parent_class):
         """
-        Dynamically create a CustomEncoding class that inherits from HevcEncoding or Av1Encoding.
-
-        :param codec: The codec type ("hevc" or "av1").
-        :return: A dynamically created class that inherits from Encoding.
+        A dynamically created encoding class that inherits from either HevcEncoder or AV1Encoder.
+        Provides additional features like denoising and efficient codec handling.
         """
 
+        # Dictionary of denoising presets
         NLMEANS_SETTINGS = {
             "light": "nlmeans=s=1.0:p=3:r=7",      # Ultra-Light Denoising (Almost No Detail Loss)
             "mild": "nlmeans=s=1.5:p=5:r=9",       # Balanced Denoising (Mild but Effective) - Recommended
@@ -33,45 +43,60 @@ def get_custom_encoding_class(codec: str) -> Type[Encoder]:
             "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
         }
 
-        def __init__(self, media_file:MediaFile, denoise=None, delete_original=True, verify=False, ):
-            super().__init__(media_file, delete_original=delete_original, verify=verify)
+        # List of efficient codecs that do not require re-encoding
+        EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
-            self.denoise = denoise
+        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, verify:bool=False, ):
+            """
+            Initializes the custom encoding class.
+            
+            Args:
+                media_file (MediaFile): The media file to be encoded.
+                denoise (Optional[str]): Denoising level ("light", "mild", "moderate", "heavy"), default is None.
+                delete_original (bool): If True, deletes the original file after encoding. Default is True.
+                verify (bool): If True, performs a verification check after encoding. Default is False.
+            """
+            super().__init__(media_file, delete_original=delete_original, verify=verify, ignore_codec=self.EFFICIENT_CODEC)
+
+            self.denoise = denoise # Stores the selected denoising level
 
         def prepare_cmd(self) -> Optional[List[str]]:
-            """Prepare FFmpeg command for HEVC encoding."""
-            efficient_codecs = {"av1", "hevc", "vp9", "vvc", "theora"}
-            video_args = self.prepare_video_args(efficient_codecs)
-            audio_args = self.prepare_audio_args()
-
-            if not video_args:
-                return None
-            elif self.codec not in video_args:
-                return None
+            """
+            Prepares the FFmpeg command for encoding, including optional denoising and progress tracking.
             
-            
-            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "")
+            Returns:
+                Optional[List[str]]: The FFmpeg command arguments, or None if encoding is skipped.
+            """
+            cmd = super().prepare_cmd()
+            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "") # Retrieve denoise settings
             if denoise_args:
                 self.logger.info(f"Applied denoise: level {self.denoise}, arg: {denoise_args}")
-                denoise_args = ["-vf", denoise_args]
+                denoise_args = ["-vf", denoise_args] # Apply denoising filter
+            else:
+                denoise_args = []
+            
+            pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
 
-
-            cmd = ["ffmpeg", "-y", "-i", self.media_file.file_path,
-                    *video_args,
-                    *audio_args,
-                    "-movflags", "+faststart",
-                    "-c:s", "copy",
-                    "-progress", "pipe:1", "-nostats",
-                    *denoise_args,
-                    self.output_tmp_file
-                    ]
+            # Modify the command by inserting denoise and progress args before the output file
+            cmd = cmd[:-1] + denoise_args + pipeline_args + cmd[-1]
             return cmd
 
         def get_duration(self) -> Optional[float]:
-            """Retrieve video duration in seconds."""
+            """
+            Retrieves the duration of the video file in seconds.
+            
+            Returns:
+                Optional[float]: Duration of the video file.
+            """
             return float(self.media_file.video_info[0].duration)
 
         def _encode(self) -> EncodingStatus:
+            """
+            Performs the encoding process with real-time progress tracking.
+            
+            Returns:
+                EncodingStatus: The final encoding status (SUCCESS, FAILED, or SKIPPED).
+            """
             ffmpeg_cmd = self.prepare_cmd()
             if not ffmpeg_cmd:
                 self.logger.warning(f"⚠️ Skipping encoding: {self.media_file.file_path} (Already in desired format).")
@@ -92,17 +117,17 @@ def get_custom_encoding_class(codec: str) -> Type[Encoder]:
 
             start_time = time.time()
             
-            # Start FFmpeg process
+            # Start FFmpeg encoding process
             process = subprocess.Popen(
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, # discard stderr
+                stderr=subprocess.DEVNULL, # Suppress stderr output
                 text=True,
                 bufsize=1,  # Line-buffered
                 universal_newlines=True
             )
 
-            # Track progress by reading FFmpeg output
+            # Track encoding progress in real-time
             for line in process.stdout:
                 self.logger.debug(f"FFmpeg: {line.strip()}")
                 match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
@@ -123,7 +148,7 @@ def get_custom_encoding_class(codec: str) -> Type[Encoder]:
                         pbar.set_postfix_str(f"{encoding_speed:.4f}x")
                         # pbar.update(elapsed_time - pbar.n)  # Update tqdm progress
 
-            process.wait()  # Ensure FFmpeg completes
+            process.wait()  # Ensure FFmpeg process completes
             if pbar:
                 pbar.close()  # Close tqdm progress bar
 
