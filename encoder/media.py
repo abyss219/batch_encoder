@@ -203,7 +203,7 @@ class MediaFile:
         """
         cmd = [
             "ffprobe", "-v", "error", "-select_streams", "v", "-show_entries",
-            "stream=codec_type,codec_name,tag_string,width,height,r_frame_rate,nb_frames,duration,index",
+            "stream=codec_type,codec_name,tag_string,width,height,r_frame_rate,nb_frames,duration,index,pix_fmt",
             "-of", "json", self.file_path
         ]
 
