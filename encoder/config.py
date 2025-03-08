@@ -22,8 +22,8 @@ DEFAULT_FRAME_RATE = 30 # Default frame rate used when a video's frame rate is n
 DEFAULT_AUDIO_BIT_RATE = "128k" # Default bitrate for encoding audio streams when no specific bitrate is provided.
 
 # SVT-AV1 Specific Defaults
-DEFAULT_SVTAV1_TUNE = 1 # Default tuning mode for SVT-AV1 (0 = sharpness, 1 = PSNR optimization).
-DEFAULT_SVTAV1_FAST_DECODE = 1 # Default fast decode setting (0-3), reducing CPU load at the cost of compression efficiency.
+DEFAULT_SVTAV1_TUNE = 1 # Default tuning mode for SVT-AV1 (0 = sharpness [VA], 1 = PSNR optimization, 2 = SSIM).
+DEFAULT_SVTAV1_FAST_DECODE = 1 # Default fast decode setting (0-2), 0 means off, reducing CPU load at the cost of compression efficiency.
 
 # Resolution Mapping - Maps resolution labels (e.g., "1080p") to their corresponding pixel counts.
 RESOLUTION = {
