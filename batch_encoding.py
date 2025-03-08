@@ -99,6 +99,16 @@ def parse_arguments():
         help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
     )
 
+    parser.add_argument(
+        "--verify", 
+        action="store_true", 
+        help=(
+            "Verify the encoded file quality using VMAF before deleting the original video.\n"
+            "If enabled, the script will calculate a VMAF score for every file\n"
+            "Only use this flag during testing, as it is very time consuming."
+        )
+    )
+
     return parser.parse_args()
 
 
@@ -110,7 +120,7 @@ class BatchEncoder:
     LOG_FILE_PREFIX = "batch_encoding"
     
     def __init__(self, directory: str, min_size: Union[str, float] = DEFAULT_MIN_SIZE, 
-                 force_reset:bool=False, denoise:str=None,
+                 verify:bool=False, force_reset:bool=False, denoise:str=None,
                  fast_decode:int=1, tune:int=0):
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
@@ -122,6 +132,7 @@ class BatchEncoder:
         self.state_file = os.path.join(LOG_DIR, f"{self.STATE_FILE_PREFIX}_{self.dir_hash}.pkl")
 
         self.denoise = denoise
+        self.verify = verify
         self.fast_decode = str(fast_decode)
         self.tune = str(tune)
         
@@ -203,8 +214,8 @@ class BatchEncoder:
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
-            encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
-                                     check_size=True,
+            encoder = CustomEncoding(media_file, delete_original=True, verify=self.verify, 
+                                     delete_threshold=0, check_size=True,
                                      denoise=self.denoise, fast_decode=self.fast_decode,
                                      tune=self.tune)
             status = encoder.encode_wrapper()

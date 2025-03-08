@@ -134,6 +134,18 @@ class SVTAV1Encoder(AV1Encode):
 
         return video_args
 
+    def _get_filename_suffix(self) -> str:
+        """
+        Generates a filename suffix based on encoding settings.
+        
+        The suffix contains the encoder class name and CRF value.
+        
+        Returns:
+            str: The filename suffix.
+        """
+        suffix = super()._get_filename_suffix()
+        return f"{suffix}_tune-{self.tune}"
+
 
 class LibaomAV1Encoder(AV1Encode):
     """
