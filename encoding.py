@@ -117,7 +117,7 @@ def parse_arguments():
     parser.add_argument(
         "--fast-decode", 
         type=int, 
-        choices=range(0, 4), 
+        choices=[0, 1, 2], 
         default=DEFAULT_SVTAV1_FAST_DECODE, 
         help="Optimize for decoding speed (0-3). Applies only to AV1 encoding."
     )
@@ -125,7 +125,7 @@ def parse_arguments():
     parser.add_argument(
         "--tune", 
         type=int, 
-        choices=[0, 1], 
+        choices=[0, 1, 2], 
         default=DEFAULT_SVTAV1_TUNE, 
         help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
     )
