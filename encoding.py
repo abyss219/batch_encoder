@@ -7,6 +7,25 @@ from encoder.config import *
 DEFAULT_CODEC = 'hevc'
 VALID_HEVC_PRESETS = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"}
 
+def preset_preset_type(value):    
+    # Check if value is an integer (for AV1)
+    if value.isdigit():
+        ivalue = int(value)
+        if 0 <= ivalue <= 13:
+            return ivalue
+        else:
+            raise argparse.ArgumentTypeError("AV1 preset must be an integer between 0 and 13.")
+
+    # Check if value is a valid HEVC preset
+    if value.lower() in VALID_HEVC_PRESETS:
+        return value.lower()
+    
+    # If neither, raise an error
+    raise argparse.ArgumentTypeError(
+        "Invalid preset value. Use a string (HEVC: ultrafast, superfast, etc.) or an integer (AV1: 0-13)."
+    )
+
+
 def parse_arguments():
     """
     Parses command-line arguments using argparse.
@@ -51,7 +70,8 @@ def parse_arguments():
     # Optional argument: CRF (Constant Rate Factor) for quality control
     parser.add_argument(
         "--crf", 
-        type=int, 
+        type=int,
+        choices=range(0, 64),
         help=(
             "Set the CRF (Constant Rate Factor) value for controlling video quality.\n"
             "Lower values give better quality but larger file sizes.\n"
@@ -65,6 +85,7 @@ def parse_arguments():
     # Optional argument: Encoding preset for speed vs compression efficiency
     parser.add_argument(
         "--preset", 
+        type=preset_preset_type,
         help=(
             "Set the encoding speed preset.\n"
             "For HEVC: A string value (ultrafast, superfast, veryfast, etc.).\n"
@@ -74,7 +95,7 @@ def parse_arguments():
 
     # Optional flag: Delete original file after encoding
     parser.add_argument(
-        "--delete-video", 
+        "--delete-video",
         action="store_true", 
         help=(
             "Delete the original video file after encoding.\n"
@@ -84,7 +105,7 @@ def parse_arguments():
 
     # Optional argument: Output directory for the encoded file
     parser.add_argument(
-        "--output-path", 
+        "--output-path",
         help=(
             "Specify the directory to save the encoded video.\n"
             "If not provided, the output will be saved in the same directory as the input file."
@@ -104,7 +125,7 @@ def parse_arguments():
     # Optional argument: Set VMAF threshold for deletion (default: 90)
     parser.add_argument(
         "--delete-threshold",
-        type=float,
+        type=lambda x: float(x) if 0 <= float(x) <= 100 else argparse.ArgumentTypeError("Threshold must be between 0 and 100."),
         default=DEFAULT_DELETE_THRESHOLD,
         help=(
             "Set the minimum VMAF score required to delete the original video.\n"
@@ -141,24 +162,31 @@ if __name__ == "__main__":
         sys.exit(1)
     output_dir = args.output_path if args.output_path else os.path.dirname(args.input_file)
 
-    if args.codec == "hevc":
-        if not isinstance(args.preset, str) or args.preset not in VALID_HEVC_PRESETS:
-            print("Error: --preset must be one of the valid HEVC presets.", file=sys.stderr)
-            sys.exit(1)
-        encoder = HevcEncoder(media, preset=args.preset, crf=args.crf, verify=args.verify, 
-                              delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
-                              output_dir=output_dir)
-    else:
-        try:
-            av1_preset = int(args.preset)
-            if av1_preset < 0 or av1_preset > 13:
-                raise ValueError
-        except (ValueError, TypeError):
-            print("Error: --preset must be an integer between 0 and 13 for AV1.", file=sys.stderr)
-            sys.exit(1)
+    if args.preset is not None:
+        if args.codec == "hevc":
+            if not isinstance(args.preset, str) or args.preset not in VALID_HEVC_PRESETS:
+                print("Error: --preset must be one of the valid HEVC presets.", file=sys.stderr)
+                sys.exit(1)
+            else:
+                args.preset = args.preset.lower()
+        else:
+            try:
+                av1_preset = int(args.preset)
+                if av1_preset < 0 or av1_preset > 13:
+                    raise ValueError
+                else:
+                    args.preset = av1_preset
+            except (ValueError, TypeError):
+                print("Error: --preset must be an integer between 0 and 13 for AV1.", file=sys.stderr)
+                sys.exit(1)
         
-        encoder = SVTAV1Encoder(media, preset=av1_preset, crf=args.crf, fast_decode=args.fast_decode, tune=args.tune, 
-                                   verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
-                                   output_dir=output_dir)
+    if args.codec == "hevc":
+        encoder = HevcEncoder(media, preset=args.preset, crf=args.crf, verify=args.verify, 
+                            delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
+                            output_dir=output_dir)
+    else:
+        encoder = SVTAV1Encoder(media, preset=args.preset, crf=args.crf, fast_decode=args.fast_decode, tune=args.tune, 
+                                    verify=args.verify, delete_original=args.delete_video, delete_threshold=args.delete_threshold, 
+                                    output_dir=output_dir)
     
     encoder.encode_wrapper()
