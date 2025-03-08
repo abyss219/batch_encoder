@@ -141,6 +141,10 @@ class BatchEncoder:
         self.failed_encodings = set()  # Stores videos that failed encoding
         self.skipped_videos = {}  # Stores videos that were skipped and their reason
 
+        self.encoded_video_count = 0
+        self.total_original_size = 0
+        self.total_encoded_size = 0
+
         # Set up the logger
         self.logger = setup_logger(self.__class__.__name__, self.log_file)
         self.logger.info(f"Initializing BatchEncoder for directory: {directory}")
@@ -156,10 +160,6 @@ class BatchEncoder:
 
         self.initial_queue_size = len(self.video_queue) # record the total queue size at the beginning
         self.start_time = time.time()
-
-        self.encoded_video_count = 0
-        self.total_original_size = 0
-        self.total_encoded_size = 0
 
     @staticmethod
     def hash_directory(directory: str) -> str:
@@ -257,6 +257,8 @@ class BatchEncoder:
         else:
             final_avg_reduction = 0
 
+        total_time_seconds = time.time() - self.start_time
+
         self.logger.info(
             "\n" + "-" * 50 + "\n"
             f"📊 All tasks finished. Final average size reduction: {final_avg_reduction:.2f}%. "
@@ -264,7 +266,11 @@ class BatchEncoder:
             f"❌ Failed: {len(self.failed_encodings)}, "
             f"⏭️ Skipped: {len(self.skipped_videos)}, "
             f"💾 Total disk space saved: {CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size)}."
+            f"⌛ Time taken current pass: {self.format_time(total_time_seconds)}"
         )
+
+        self.log_final_results()
+        
 
     def save_state(self):
         """Save the current encoding state to a file."""
@@ -273,7 +279,10 @@ class BatchEncoder:
             "success_encodings": self.success_encodings,
             "failed_encodings": self.failed_encodings,
             "skipped_videos": self.skipped_videos,
-            "video_queue": self.video_queue
+            "video_queue": self.video_queue,
+            'encoded_video_count' : self.encoded_video_count,
+            'total_original_size' : self.total_original_size,
+            'total_encoded_size' : self.total_encoded_size
         }
         try:
             with open(self.state_file, "wb") as f:
@@ -295,6 +304,10 @@ class BatchEncoder:
                     self.skipped_videos = state.get("skipped_videos", {})
                     self.video_queue = state.get("video_queue", [])
 
+                    self.encoded_video_count = state.get("encoded_video_count", 0)
+                    self.total_original_size = state.get("total_original_size", 0)
+                    self.total_encoded_size = state.get("total_encoded_size", 0)
+
                     if len(self.video_queue) <= 0:
                         self.logger.info(f"Previous encoding session has finished or not yet started. Restarting for {self.directory}.")
                         return False
@@ -315,6 +328,11 @@ class BatchEncoder:
         self.failed_encodings.clear()
         self.skipped_videos.clear()
         self.video_queue.clear()
+
+        self.encoded_video_count = 0
+        self.total_original_size = 0
+        self.total_encoded_size = 0
+
         self.save_state()  # Save the reset state
         open(self.log_file, "w").close()  # Clear file
         self.logger.info("Encoding state reset.")
@@ -344,7 +362,7 @@ class BatchEncoder:
         """Log the final encoding summary including success, failure, skipped videos, 
         total processed, average size reduction, and total encoding time."""
 
-        self.logger.info("==== Encoding Process Completed ====")
+        self.logger.info("==== Encoding Process Detail ====")
 
         total_processed = len(self.success_encodings) + len(self.failed_encodings) + len(self.skipped_videos)
         
@@ -372,11 +390,6 @@ class BatchEncoder:
                 self.logger.info(f"  - {file_path}")
         else:
             self.logger.info("No failed encodings.")
-
-        # ✅ Log total encoding time
-        total_time_seconds = time.time() - self.start_time
-        formatted_time = self.format_time(total_time_seconds)
-        self.logger.info(f"Total Encoding Time: {formatted_time}")
 
         self.logger.info("====================================")
 
