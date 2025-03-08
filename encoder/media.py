@@ -10,6 +10,19 @@ import os, sys
 
 @dataclass(frozen=True)
 class VideoStream:
+    """
+    Represents a video stream extracted from a media file.
+    
+    Attributes:
+        index (Optional[int]): Original index of the stream in the media file.
+        ffmpeg_index (int): Index used by FFmpeg for mapping.
+        codec (Optional[str]): Codec used for the video stream.
+        tag (Optional[str]): Additional tag information.
+        width (Optional[int]): Width of the video in pixels.
+        height (Optional[int]): Height of the video in pixels.
+        frame_rate (Optional[float]): Frame rate of the video.
+        duration (Optional[float]): Duration of the video in seconds.
+    """
     index: Optional[int]
     ffmpeg_index: int
     codec: Optional[str]
@@ -20,6 +33,17 @@ class VideoStream:
     duration: Optional[float]
 
     def get_readable_resolution_or_default(self, default=DEFAULT_RESOLUTION, tolerance = DEFAULT_RESOLUTION_TOLERANCE):
+        """
+        Determines the closest standard resolution for the video based on pixel count.
+        If the resolution doesn't match a known category, returns the default resolution.
+        
+        Args:
+            default (str): Default resolution to return if no match is found.
+            tolerance (float): Allowed variation in pixel count when determining resolution.
+        
+        Returns:
+            str: The identified resolution or the default value.
+        """
         if self.height is None or self.width is None:
             return default
 
@@ -34,10 +58,29 @@ class VideoStream:
         return resolution
     
     def map_prefix(self, new_index:int):
+        """
+        Generates FFmpeg mapping arguments for the video stream.
+        
+        Args:
+            new_index (int): New index assigned to the stream in FFmpeg processing.
+        
+        Returns:
+            List[str]: FFmpeg command arguments for mapping the video stream.
+        """
         return ["-map", f"0:v:{self.ffmpeg_index}", f"-c:v:{new_index}"]
 
 @dataclass(frozen=True)
 class AudioStream:
+    """
+    Represents an audio stream extracted from a media file.
+    
+    Attributes:
+        codec (Optional[str]): Codec used for the audio stream.
+        ffmpeg_index (int): Index used by FFmpeg for mapping.
+        index (Optional[int]): Original index of the stream in the media file.
+        bit_rate (Optional[int]): Bit rate of the audio stream.
+        sample_rate (Optional[int]): Sample rate of the audio stream.
+    """
     codec: Optional[str]
     ffmpeg_index: int
     index: Optional[int]
@@ -45,13 +88,30 @@ class AudioStream:
     sample_rate: Optional[int]
 
     def map_prefix(self, new_index:int):
+        """
+        Generates FFmpeg mapping arguments for the audio stream.
+        
+        Args:
+            new_index (int): New index assigned to the stream in FFmpeg processing.
+        
+        Returns:
+            List[str]: FFmpeg command arguments for mapping the audio stream.
+        """
         return ["-map", f"0:a:{self.ffmpeg_index}", f"-c:a:{new_index}"]
 
 class MediaFile:
-    """Handles media metadata extraction using ffprobe."""
+    """
+    Handles media metadata extraction using ffprobe.
+    
+    Attributes:
+        file_path (str): Path to the media file.
+        video_info (List[VideoStream]): List of detected video streams.
+        audio_info (List[AudioStream]): List of detected audio streams.
+        file_name (str): Name of the media file.
+    """
 
     def __init__(self, file_path: str):
-        self.logger = setup_logger("MediaFile", "logs/media_file.log")
+        self.logger = setup_logger(self.__class__.__name__, os.path.join(LOG_DIR, "media_file.log"))
         self.file_path: str = file_path
         
         self.logger.debug(f"🔍 Initializing MediaFile for: {file_path}")
@@ -60,6 +120,7 @@ class MediaFile:
         if not self.video_info:
             self.logger.error(f"❌ Invalid video file: {file_path}")
             raise ValueError("The provided file does not contain a valid video stream.")
+        
         self.audio_info = self.get_audio_info()
 
         self.file_name = os.path.basename(self.file_path)
@@ -69,8 +130,11 @@ class MediaFile:
         """
         Compares this video file with another using VMAF and returns the VMAF score.
 
-        :param other: Another MediaFile object to compare against.
-        :return: VMAF score as a float, or None if an error occurs.
+        Args:
+            other (MediaFile): Another MediaFile object to compare against.
+        
+        Returns:
+            float: VMAF score or None if an error occurs.
         """
         self.logger.debug(f"🔍 Comparing {self.file_name} with {other.file_name} using VMAF")
         
@@ -129,7 +193,13 @@ class MediaFile:
 
 
     def get_video_info(self) -> List[VideoStream]:
-        """Retrieve all video streams' codec, resolution, and frame rate in one ffprobe call. Returns None if an invalid stream is encountered."""
+        """
+        Retrieve all video streams' codec, resolution, and frame rate in one ffprobe call.
+        Returns a list of VideoStream objects. If no valid stream is found, returns an empty list.
+        
+        Returns:
+            List[VideoStream]: List of valid video streams extracted from the file.
+        """
         cmd = [
             "ffprobe", "-v", "error", "-select_streams", "v", "-show_entries",
             "stream=codec_type,codec_name,tag_string,width,height,r_frame_rate,nb_frames,duration,index",
@@ -142,13 +212,15 @@ class MediaFile:
             info = json.loads(result.stdout)
             video_streams = []
             
-            index_counter = 0
+            index_counter = 0 # FFmpeg assigns 0-based indexes to video streams
 
             if "streams" in info:
                 for stream in info["streams"]:
                     codec_type = stream.get("codec_type")
                     codec = stream.get("codec_name")
                     tag = stream.get("tag_string")
+
+                    # Convert relevant keys to integers where possible
                     for key in ["index", "width", "height"]:
                         if stream.get(key) is not None:
                             try:
@@ -156,12 +228,13 @@ class MediaFile:
                             except ValueError:
                                 stream[key] = None
                     
-                    index = stream["index"] # only used to check if the video is valid
+                    index = stream["index"] # Used to validate the video stream
                     width = stream["width"]
                     height = stream["height"]
 
                     duration=stream.get("duration")
 
+                    # Extract frame rate from string format (e.g., "30000/1001")
                     frame_rate_str = stream.get("r_frame_rate")
                     if frame_rate_str:
                         frame_match = re.match(r"(\d+)/(\d+)", frame_rate_str)
@@ -188,18 +261,18 @@ class MediaFile:
                         codec in {"png", "mjpeg", "bmp", "gif", "tiff", "jpegxl", "webp", "heif", "avif"} or 
                         # if frame_rate defined then frame_match must be defined
                         frame_rate and int(frame_match.group(2)) == int(frame_match.group(1)) or  # Detect single-frame video.
-                        stream.get("nb_frames") == "1" or  # Explicitly check frame count
+                        stream.get("nb_frames") == "1" or  # Explicit check for single-frame videos
                         frame_rate == 0 or  # Invalid frame rate
-                        index is None # invalid index
+                        index is None # Ensure index exists
                     ):
                         self.logger.warning(f"❌ Invalid video stream detected: {asdict(stm)}")
                     else:
                         video_streams.append(stm)
                     
-                    index_counter += 1
+                    index_counter += 1 # Increment FFmpeg stream index
                         
 
-            return video_streams  # Return empty list if no valid video streams are found
+            return video_streams # Return empty list if no valid video streams are found
         
         except subprocess.CalledProcessError as e:
             print(f"⚠️ ffprobe error retrieving video info for {self.file_path}: {e}")
@@ -209,13 +282,19 @@ class MediaFile:
         return []
 
     def get_audio_info(self) -> List[AudioStream]:
-        """Retrieve all audio streams' codec and bit rate in one ffprobe call. Returns None if an invalid stream is encountered."""
+        """
+        Retrieve all audio streams' codec and bit rate in one ffprobe call.
+        Returns a list of AudioStream objects. If no valid stream is found, returns an empty list.
+        
+        Returns:
+            List[AudioStream]: List of valid audio streams extracted from the file.
+        """
         cmd = [
             "ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
             "stream=codec_type,codec_name,index,bit_rate,sample_rate",
             "-of", "json", self.file_path
         ]
-        index_counter = 0
+        index_counter = 0 # FFmpeg assigns 0-based indexes to audio streams
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             info = json.loads(result.stdout)
@@ -227,7 +306,7 @@ class MediaFile:
                         continue
                     
                     codec = stream.get("codec_name")
-
+                    # Convert relevant keys to integers where possible
                     for key in ["index", "bit_rate", "sample_rate"]:
                         if stream.get(key) is not None:
                             try:
@@ -242,13 +321,13 @@ class MediaFile:
                         audio_streams.append(
                             AudioStream(
                                 codec=codec,
-                                ffmpeg_index=index_counter, # use index counter to be compatible with ffmpeg
+                                ffmpeg_index=index_counter, # Use FFmpeg's 0-based indexing
                                 index=index, 
                                 bit_rate=bit_rate,
                                 sample_rate=sample_rate
                             )
                         )
-                    index_counter += 1
+                    index_counter += 1 # Increment FFmpeg stream index
             
             return audio_streams
         

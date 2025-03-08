@@ -5,7 +5,10 @@ __pycache__/
 
 # Logs
 logs/
+log/
 logs/*
+log/*
+.log
 
 # Virtual environment
 venv/
