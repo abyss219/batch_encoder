@@ -24,8 +24,8 @@ class HevcEncoder(PresetCRFEncoder):
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Union[str, int, None] = None,
                  delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY,
-                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None, 
-                  ignore_codec:Set[str]={'hevc'}, **kwargs):
+                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, check_size:bool=DEFAULT_CHECK_SIZE,
+                  output_dir: Optional[str] = None, ignore_codec:Set[str]={'hevc'}, **kwargs):
         """
         Initializes the HEVC encoder with default settings for x265 encoding.
         
@@ -42,7 +42,7 @@ class HevcEncoder(PresetCRFEncoder):
         """
         # Calls the parent class constructor with 'libx265' as the encoder
         super().__init__(media_file, encoder="libx265", preset=preset, crf=crf,
-                         delete_original=delete_original, verify=verify, 
+                         delete_original=delete_original, check_size=check_size, verify=verify, 
                          delete_threshold=delete_threshold, output_dir=output_dir,
                          ignore_codec=ignore_codec)
     

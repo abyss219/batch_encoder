@@ -5,6 +5,7 @@ class EncodingStatus(Enum):
     SUCCESS = "success" # Encoding completed successfully.
     FAILED = "failed" # Encoding process encountered an error.
     LOWQUALITY = "low quality" # The encoded video did not meet quality expectations.
+    LARGESIZE = "large size" # The encoded video has larger size then original video.
 
 LOG_DIR = "logs" # Directory path where log files will be stored for encoding logs.
 
@@ -12,6 +13,7 @@ LOG_DIR = "logs" # Directory path where log files will be stored for encoding lo
 DEFAULT_DELETE_THRESHOLD = 90.0 # Minimum VMAF score required to delete the original file.
 DEFAULT_DELETE_ORIGIN = False # If True, deletes the original file after encoding to save space.
 DEFAULT_VERIFY = False # If True, performs a verification check using VMAF before deleting the original file.
+DEFAULT_CHECK_SIZE = True
 
 # Video Processing Defaults
 DEFAULT_RESOLUTION_TOLERANCE = 0.05 # Allows minor differences in resolution before deciding to re-encode.

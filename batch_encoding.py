@@ -10,6 +10,7 @@ import pickle
 import hashlib
 import argparse
 import sys
+import time
 
 VIDEO_EXTENSIONS = {
     ".mp4",  # MPEG-4 Part 14
@@ -114,6 +115,7 @@ class BatchEncoder:
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
         self.directory = directory
+        self.min_size = min_size
         self.min_size_bytes = self.parse_size(min_size)
         self.dir_hash = self.hash_directory(directory)  # Generate hash for directory\
         self.log_file = os.path.join(LOG_DIR, f"{self.LOG_FILE_PREFIX}_{self.dir_hash}.log")
@@ -126,7 +128,7 @@ class BatchEncoder:
         self.video_queue = []
         self.success_encodings = set()  # Stores successfully encoded videos
         self.failed_encodings = set()  # Stores videos that failed encoding
-        self.skipped_videos = set()  # Stores videos that were skipped due to size limit
+        self.skipped_videos = {}  # Stores videos that were skipped and their reason
 
         # Set up the logger
         self.logger = setup_logger(self.__class__.__name__, self.log_file)
@@ -141,7 +143,8 @@ class BatchEncoder:
 
         self.save_state()
 
-        self.initial_queue_size = len(self.video_queue)
+        self.initial_queue_size = len(self.video_queue) # record the total queue size at the beginning
+        self.start_time = time.time()
 
         self.encoded_video_count = 0
         self.total_original_size = 0
@@ -174,8 +177,9 @@ class BatchEncoder:
             try:
                 file_size = os.path.getsize(file)
                 if file_size < self.min_size_bytes:
-                    self.logger.debug(f"Skipping {file} (Size: {CustomEncoding.human_readable_size(file_size)}) - Below threshold.")
-                    self.skipped_videos.add(file)
+                    log = f"Skipping {file} (Size: {CustomEncoding.human_readable_size(file_size)}) - Below threshold of {self.min_size}."
+                    self.logger.debug(log)
+                    self.skipped_videos[file] = log
                     continue
 
                 media_file = MediaFile(file)
@@ -200,6 +204,7 @@ class BatchEncoder:
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
             encoder = CustomEncoding(media_file, delete_original=True, verify=False, 
+                                     check_size=True,
                                      denoise=self.denoise, fast_decode=self.fast_decode,
                                      tune=self.tune)
             status = encoder.encode_wrapper()
@@ -219,12 +224,19 @@ class BatchEncoder:
                 self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({CustomEncoding.human_readable_size(original_size)} → {CustomEncoding.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
             elif status == EncodingStatus.SKIPPED:
-                self.skipped_videos.add(media_file.file_path)
-                self.logger.info(f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format).")
+                log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
+                self.skipped_videos[media_file.file_path] = log
+                self.logger.info(log)
 
             elif status == EncodingStatus.FAILED:
                 self.failed_encodings.add(media_file.file_path)
                 self.logger.warning(f"❌ Encoding failed for {media_file.file_path}.")
+            elif status == EncodingStatus.LARGESIZE:
+                log = f"❌ Encoding skipped for {media_file.file_path} due to large size. The encoded video has been deleted."
+                self.skipped_videos[log]
+                if os.path.isfile(encoder.output_tmp_file):
+                    os.remove(encoder.output_tmp_file)
+                self.logger.warning(log)
             
             self.save_state()  # Save state in case of failure
         
@@ -269,7 +281,7 @@ class BatchEncoder:
                 if state.get("directory") == self.directory:
                     self.success_encodings = state.get("success_encodings", set())
                     self.failed_encodings = state.get("failed_encodings", set())
-                    self.skipped_videos = state.get("skipped_videos", set())
+                    self.skipped_videos = state.get("skipped_videos", {})
                     self.video_queue = state.get("video_queue", [])
 
                     if len(self.video_queue) <= 0:
@@ -316,6 +328,69 @@ class BatchEncoder:
             return int(float(value) * size_map.get(unit, 1))
         
         raise ValueError(f"Invalid size format: {size}")
+
+    def log_final_results(self):
+        """Log the final encoding summary including success, failure, skipped videos, 
+        total processed, average size reduction, and total encoding time."""
+
+        self.logger.info("==== Encoding Process Completed ====")
+
+        total_processed = len(self.success_encodings) + len(self.failed_encodings) + len(self.skipped_videos)
+        
+        # ✅ Log total processed files
+        self.logger.info(f"Total Processed Videos: {total_processed}")
+
+        # ✅ Log successfully encoded videos
+        if self.success_encodings:
+            self.logger.info(f"Successfully Encoded {len(self.success_encodings)} Videos.")
+        else:
+            self.logger.info("No videos were successfully encoded.")
+
+        # ✅ Log skipped videos with reasons
+        if self.skipped_videos:
+            self.logger.info(f"Skipped {len(self.skipped_videos)} Videos:")
+            for file_path, reason in self.skipped_videos.items():
+                self.logger.info(f"  - {file_path} | Reason: {reason}")
+        else:
+            self.logger.info("No videos were skipped.")
+
+        # ✅ Log failed encodings
+        if self.failed_encodings:
+            self.logger.info(f"Failed {len(self.failed_encodings)} Encodings:")
+            for file_path in self.failed_encodings:
+                self.logger.info(f"  - {file_path}")
+        else:
+            self.logger.info("No failed encodings.")
+
+        # ✅ Log total encoding time
+        total_time_seconds = time.time() - self.start_time
+        formatted_time = self.format_time(total_time_seconds)
+        self.logger.info(f"Total Encoding Time: {formatted_time}")
+
+        self.logger.info("====================================")
+
+    @staticmethod
+    def format_time(seconds: float) -> str:
+        """Convert seconds into a human-readable format including weeks, days, hours, minutes, and seconds."""
+        weeks, remainder = divmod(seconds, 604800)  # 604800 seconds in a week
+        days, remainder = divmod(remainder, 86400)  # 86400 seconds in a day
+        hours, remainder = divmod(remainder, 3600)  # 3600 seconds in an hour
+        minutes, seconds = divmod(remainder, 60)    # 60 seconds in a minute
+
+        formatted_time = []
+        
+        if weeks > 0:
+            formatted_time.append(f"{int(weeks)} week{'s' if weeks > 1 else ''}")
+        if days > 0:
+            formatted_time.append(f"{int(days)} day{'s' if days > 1 else ''}")
+        if hours > 0:
+            formatted_time.append(f"{int(hours)} hour{'s' if hours > 1 else ''}")
+        if minutes > 0:
+            formatted_time.append(f"{int(minutes)} minute{'s' if minutes > 1 else ''}")
+        if seconds > 0 or not formatted_time:
+            formatted_time.append(f"{int(seconds)} second{'s' if seconds > 1 else ''}")
+
+        return ", ".join(formatted_time)
 
 
 if __name__ == "__main__":

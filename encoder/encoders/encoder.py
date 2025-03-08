@@ -37,7 +37,8 @@ class CRFEncoder(ABC):
 
     def __init__(self, media_file: MediaFile, encoder: str, 
                  crf: Union[str, int, None] = None, delete_original: bool=DEFAULT_DELETE_ORIGIN, 
-                 verify:bool=DEFAULT_VERIFY, delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
+                 verify:bool=DEFAULT_VERIFY, delete_threshold:float=DEFAULT_DELETE_THRESHOLD, 
+                 check_size:bool=DEFAULT_CHECK_SIZE, output_dir: Optional[str] = None,
                  ignore_codec:Set[str]={}):
         """
         Initializes the CRFEncoder instance.
@@ -59,6 +60,7 @@ class CRFEncoder(ABC):
         self.crf = int(crf) if crf else crf # Convert CRF to an integer if provided
         self.delete_original = delete_original
         self.delete_threshold = delete_threshold
+        self.check_size = check_size
         self.verify = verify
         self.output_dir = output_dir or os.path.dirname(media_file.file_path) # Set output directory
         self.ignore_codec = ignore_codec
@@ -145,7 +147,7 @@ class CRFEncoder(ABC):
         else:
             option = ""
             for fmt in supported_fmts:
-                if video_stream.pix_fmt.startswith(fmt):
+                if video_stream.pix_fmt and video_stream.pix_fmt.startswith(fmt):
                     option = fmt
                     break
             if not option:
@@ -259,19 +261,7 @@ class CRFEncoder(ABC):
         self.logger.debug(f"🎵 Prepared audio arguments: {audio_args.values()}")
         return audio_args
 
-    def clean_up(self):
-        """
-        Performs post-encoding cleanup.
-        
-        - If verification is enabled, compares encoded file quality using VMAF.
-        - If the encoded file meets the quality threshold, the original file is deleted.
-        - If verification fails or quality is too low, the original file is retained.
-        
-        Returns:
-            EncodingStatus: The status of encoding cleanup (SUCCESS, FAILED, LOWQUALITY, etc.).
-        """
-        self.logger.info("🔄 Cleaning up...")
-        
+    def _verify(self):
         if self.verify:
             self.logger.info("🔍 Verifying encoded file integrity with VMAF...")
             try:
@@ -288,23 +278,45 @@ class CRFEncoder(ABC):
                     self.logger.warning("⚠️ VMAF comparison failed. The original file will not be deleted.")
                     self.new_file_path = self.output_tmp_file
                     return EncodingStatus.FAILED
+        return EncodingStatus.SUCCESS
+
+    def _replace_original(self):
+        try:
+            self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
+            os.remove(self.media_file.file_path)
+            os.rename(self.output_tmp_file, self.new_file_path)
+            self.logger.info(f"📁 Successfully replaced {self.media_file.file_name} with {os.path.basename(self.new_file_path)}")
+        except OSError as e:
+            self.logger.error(f"❌ Failed to delete original file: {e}")
+            return EncodingStatus.FAILED
+        return EncodingStatus.SUCCESS
+
+    def clean_up(self):
+        """
+        Performs post-encoding cleanup.
         
-            if vmaf_score < self.delete_threshold:
-                self.logger.warning(f"⚠️ VMAF comparison below threshold {self.delete_threshold}. The original file will not be deleted.")
-                self.new_file_path = self.output_tmp_file
-                return EncodingStatus.LOWQUALITY
+        - If verification is enabled, compares encoded file quality using VMAF.
+        - If the encoded file meets the quality threshold, the original file is deleted.
+        - If verification fails or quality is too low, the original file is retained.
+        
+        Returns:
+            EncodingStatus: The status of encoding cleanup (SUCCESS, FAILED, LOWQUALITY, etc.).
+        """
+        self.logger.info("🔄 Cleaning up...")
+        
+        status = EncodingStatus.SUCCESS
+        if self.verify:
+            status = self._verify()
+        
+        if self.check_size:
+            if os.path.getsize(self.output_tmp_file) >= os.path.getsize(self.media_file.file_path):
+                self.logger.warning("⚠️ The encoded video has a larger size than the original. The original file will not be deleted.")
+                return EncodingStatus.LARGESIZE
 
         if self.delete_original:
-            try:
-                self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
-                os.remove(self.media_file.file_path)
-                os.rename(self.output_tmp_file, self.new_file_path)
-                self.logger.info(f"📁 Successfully replaced {self.media_file.file_name} with {os.path.basename(self.new_file_path)}")
-            except OSError as e:
-                self.logger.error(f"❌ Failed to delete original file: {e}")
-                return EncodingStatus.FAILED
+            status = self._replace_original()
         
-        return EncodingStatus.SUCCESS
+        return status
 
     def _encode(self) -> EncodingStatus:
         """
@@ -395,7 +407,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
     DEFAULT_PRESET:dict = None
 
     def __init__(self, media_file: MediaFile, encoder: str, preset: Union[str, int, None] = None, 
-                 crf: Union[str, int, None] = None, delete_original: bool=DEFAULT_DELETE_ORIGIN, 
+                 crf: Union[str, int, None] = None, delete_original: bool=DEFAULT_DELETE_ORIGIN, check_size:bool=DEFAULT_CHECK_SIZE,
                  verify:bool=DEFAULT_VERIFY, delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
                  ignore_codec:Set[str]={}):
         """
@@ -416,7 +428,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
 
         # Call parent constructor to initialize common encoding parameters
         super().__init__(media_file, encoder, crf=crf,
-                         delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
+                         delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, check_size=check_size, 
                          output_dir=output_dir, ignore_codec=ignore_codec)
         
         

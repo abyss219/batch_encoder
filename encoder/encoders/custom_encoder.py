@@ -7,6 +7,7 @@ from typing import Type, Optional, List, Dict
 import subprocess
 import time
 import re
+import os
 from tqdm import tqdm
 
 def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
@@ -63,7 +64,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         # List of efficient codecs that do not require re-encoding
         EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
-        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, verify:bool=False, **kwargs):
+        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, check_size:bool=True, verify:bool=False, **kwargs):
             """
             Initializes the custom encoding class.
             
@@ -73,7 +74,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 delete_original (bool): If True, deletes the original file after encoding. Default is True.
                 verify (bool): If True, performs a verification check after encoding. Default is False.
             """
-            super().__init__(media_file, delete_original=delete_original, verify=verify, 
+            super().__init__(media_file, delete_original=delete_original, check_size=check_size,
+                             verify=verify, 
                              ignore_codec=self.EFFICIENT_CODEC, **kwargs)
 
             self.denoise = denoise # Stores the selected denoising level
@@ -122,6 +124,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
             return video_args
 
+
+
         def _encode(self) -> EncodingStatus:
             """
             Performs the encoding process with real-time progress tracking.
@@ -133,7 +137,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             if not ffmpeg_cmd:
                 self.logger.warning(f"⚠️ Skipping encoding: {self.media_file.file_path} (Already in desired format).")
                 return EncodingStatus.SKIPPED
-
+            
+            self.logger.info(f"🚀 Final ffmpeg arg: {" ".join(ffmpeg_cmd)}")
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
             # Get video duration
@@ -186,11 +191,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 pbar.close()  # Close tqdm progress bar
 
             if process.returncode == 0:
-                self.clean_up()
+                status = self.clean_up()
                 self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
-                return EncodingStatus.SUCCESS
+                return status
             else:
                 self.logger.error(f"❌ Encoding failed: FFmpeg returned {process.returncode}")
                 return EncodingStatus.FAILED
-    
+
     return CustomEncoding

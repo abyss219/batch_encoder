@@ -41,7 +41,7 @@ class SVTAV1Encoder(AV1Encode):
 
     def __init__(self, media_file: MediaFile, preset: Union[str, int, None] = None, crf: Union[str, int, None] = None,
                  tune:int = DEFAULT_SVTAV1_TUNE, fast_decode: int = DEFAULT_SVTAV1_FAST_DECODE,
-                 delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 
+                 delete_original: bool = DEFAULT_DELETE_ORIGIN, check_size:bool=DEFAULT_CHECK_SIZE, verify: bool = DEFAULT_VERIFY, 
                  delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
                  ignore_codec:Set[str]={'av1'}, **kwargs):
         """
@@ -85,6 +85,7 @@ class SVTAV1Encoder(AV1Encode):
         
         super().__init__(media_file, encoder="libsvtav1", preset=preset, crf=crf,
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
+                         check_size=check_size,
                          output_dir=output_dir, ignore_codec=ignore_codec)
         
         if int(tune) < 0 or int(tune) > 2:
@@ -155,8 +156,8 @@ class LibaomAV1Encoder(AV1Encode):
 
     def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[int] = None,
                  delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 
-                 delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None, 
-                 ignore_codec:Set[str]={'av1'}, **kwargs):
+                 delete_threshold:float=DEFAULT_DELETE_THRESHOLD, check_size:bool=DEFAULT_CHECK_SIZE,
+                 output_dir: Optional[str] = None, ignore_codec:Set[str]={'av1'}, **kwargs):
         """
         Initializes the libaom-AV1 encoder.
         
@@ -166,6 +167,7 @@ class LibaomAV1Encoder(AV1Encode):
         """
         super().__init__(media_file, encoder="libaom-av1", preset=preset, crf=crf,
                          delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
+                         check_size=check_size,
                          output_dir=output_dir, ignore_codec=ignore_codec)
 
 
