@@ -185,8 +185,10 @@ class CRFEncoder(ABC):
         video_args_flatten = [item for sublist in video_args for item in sublist]
 
         if not video_args_flatten:
+            self.logger.debug(f"⚠️ No valid stream exists for file: {self.media_file.file_path}.")
             return None
         elif self.encoder not in video_args_flatten and 'hvc1' not in video_args_flatten: # if we copy all streams, just ignore it
+            self.logger.debug(f"⚠️ Nothing to encode for file: {self.media_file.file_path} is already in the desired format.")
             return None
         
         cmd = ["ffmpeg", "-y", "-i", self.media_file.file_path,

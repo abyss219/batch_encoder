@@ -312,6 +312,8 @@ class BatchEncoder:
             "failed_encodings": self.failed_encodings,
             "skipped_videos": self.skipped_videos,
             "video_queue": self.video_queue,
+            "min_size": self.min_size,
+            "min_resolution": self.min_resolution,
             'encoded_video_count' : self.encoded_video_count,
             'total_original_size' : self.total_original_size,
             'total_encoded_size' : self.total_encoded_size
@@ -336,14 +338,25 @@ class BatchEncoder:
                     self.skipped_videos = state.get("skipped_videos", {})
                     self.video_queue = state.get("video_queue", [])
 
+                    min_size = state.get("min_size", DEFAULT_MIN_SIZE)
+                    min_resolution = state.get('min_resolution', None)
+
                     self.encoded_video_count = state.get("encoded_video_count", 0)
                     self.total_original_size = state.get("total_original_size", 0)
                     self.total_encoded_size = state.get("total_encoded_size", 0)
 
                     if len(self.video_queue) <= 0:
-                        self.logger.info(f"Previous encoding session has finished or not yet started. Restarting for {self.directory}.")
+                        if len(self.encoded_video_count) > 0:
+                            self.logger.info(f"Previous encoding session has finished. Restarting for {self.directory}.")
+                        else:
+                            self.logger.info(f"Previous encoding hasn't started. Restarting for {self.directory}.")
                         return False
-
+                    elif min_size != self.min_size or min_resolution != self.min_resolution:
+                        self.logger.info("Current encoding session has different parameters than saved encoding session. "
+                                         f"Got different values for min_size: {min_size}, previous {self.min_size} or min_resolution: {min_resolution}, previous {self.min_resolution}. "
+                                         f"Restarting for {self.directory}.")
+                        return False
+                    
                     self.logger.info(f"Resumed encoding session for {self.directory}.")
                     return True
                 else:
