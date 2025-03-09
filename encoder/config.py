@@ -40,7 +40,7 @@ RESOLUTION = {
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
-    "1080p": "medium",
+    "1080p": "slow",
     "720p": "medium",
     "480p": "fast",
     "360p": "fast"
@@ -48,19 +48,19 @@ DEFAULT_PRESET_HEVC = {
 
 # CRF (Constant Rate Factor) settings for HEVC encoding. Lower values mean higher quality and larger file sizes.
 DEFAULT_CRF_HEVC = {
-    "4k": 26,
-    "2k": 25,
-    "1080p": 24,
-    "720p": 23,
-    "480p": 21,
-    "360p": 20
+    "4k": 25,
+    "2k": 24,
+    "1080p": 23,
+    "720p": 22,
+    "480p": 20,
+    "360p": 19
 }
 
 # Preset settings for AV1 encoding, where lower values offer better compression at the cost of speed.
 DEFAULT_PRESET_SVTAV1 = {
     "4k": 4,
     "2k": 4,
-    "1080p": 5,
+    "1080p": 4,
     "720p": 5,
     "480p": 6,
     "360p": 6
