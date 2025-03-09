@@ -89,10 +89,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             """
             cmd = super().prepare_cmd()
             
-            pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
+            if cmd:
+                pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
 
-            # Modify the command by inserting denoise and progress args before the output file
-            cmd = cmd[:-1] + pipeline_args + cmd[-1:]
+                # Modify the command by inserting denoise and progress args before the output file
+                cmd = cmd[:-1] + pipeline_args + cmd[-1:]
             return cmd
 
         def get_duration(self) -> Optional[float]:
