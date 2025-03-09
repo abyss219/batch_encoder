@@ -192,8 +192,8 @@ class CRFEncoder(ABC):
         cmd = ["ffmpeg", "-y", "-i", self.media_file.file_path,
                 *video_args_flatten,
                 *audio_args_flatten,
-                "-movflags", "+faststart",
                 "-c:s", "copy",
+                "-movflags", "+faststart",
                 self.output_tmp_file
                  ]
         
