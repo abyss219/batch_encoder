@@ -40,41 +40,44 @@ RESOLUTION = {
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
-    "1080p": "slow",
-    "720p": "slow",
-    "480p": "slow",
-    "360p": "slow"
+    "1080p": "medium",
+    "720p": "medium",
+    "480p": "fast",
+    "360p": "fast"
 }
 
 # CRF (Constant Rate Factor) settings for HEVC encoding. Lower values mean higher quality and larger file sizes.
 DEFAULT_CRF_HEVC = {
-    "4k": 24,
-    "2k": 23,
-    "1080p": 23,
-    "720p": 20,
-    "480p": 18,
-    "360p": 16
+    "4k": 26,
+    "2k": 25,
+    "1080p": 24,
+    "720p": 23,
+    "480p": 21,
+    "360p": 20
 }
 
 # Preset settings for AV1 encoding, where lower values offer better compression at the cost of speed.
 DEFAULT_PRESET_SVTAV1 = {
     "4k": 4,
     "2k": 4,
-    "1080p": 4,
-    "720p": 4,
-    "480p": 4,
-    "360p": 4
+    "1080p": 5,
+    "720p": 5,
+    "480p": 6,
+    "360p": 6
 }
+
+
 
 # CRF settings for AV1 encoding. Lower values mean better quality and larger file sizes.
 DEFAULT_CRF_SVTAV1 = {
-    "4k": 31,
-    "2k": 30,
-    "1080p": 30,
-    "720p": 26,
-    "480p": 23,
-    "360p": 21
+    "4k": 30,
+    "2k": 29,
+    "1080p": 28, 
+    "720p": 27,
+    "480p": 25,
+    "360p": 24
 }
+
 
 DEFAULT_CRF_LIBAMOAV1 = {
     "4k": 28,
