@@ -190,8 +190,6 @@ class MediaFile:
         except Exception as e:
             self.logger.exception(e)
             return None
-        
-
 
     def get_video_info(self) -> List[VideoStream]:
         """

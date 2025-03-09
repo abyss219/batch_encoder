@@ -2,7 +2,7 @@ from encoder import *
 from encoder.config import *
 from encoder.utils.logger import setup_logger
 from encoder.encoders.custom_encoder import get_custom_encoding_class
-from typing import Union, List
+from typing import Union, List, Optional
 import re
 import os
 import heapq
@@ -63,6 +63,8 @@ VIDEO_EXTENSIONS = {
 DEFAULT_MIN_SIZE = "100MB"
 DEFAULT_DENOISE = "none"
 DEFAULT_CODEC = 'hevc'
+DEFAULT_FAST_DECODE = 1
+DEFAULT_TUNE = 0
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Batch video encoding script.")
@@ -78,10 +80,10 @@ def parse_arguments():
     
     parser.add_argument(
         "--denoise",
-        choices=["none", "light", "mild", "moderate", "heavy"],
-        default=DEFAULT_DENOISE,
-        help=f"Apply denoising filter. Options: 'none', 'light', 'mild', 'moderate', 'heavy'. Default is '{DEFAULT_DENOISE}'."
+        choices=["light", "mild", "moderate", "heavy"],
+        help="Apply denoising filter. Options: 'none', 'light', 'mild', 'moderate', 'heavy'. If omitted, no denoising will be applied."
     )
+
 
     parser.add_argument(
         "--fast-decode", 
@@ -96,7 +98,13 @@ def parse_arguments():
         type=int, 
         choices=[0, 1, 2], 
         default=DEFAULT_SVTAV1_TUNE, 
-        help="Quality tuning mode for AV1 (0 = sharpness, 1 = PSNR optimization)."
+        help=(
+            "Specifies the tuning metric for encoding quality:\n"
+            "  0 = VQ  (Visual Quality): Prioritizes subjective visual quality, making the video look more natural.\n"
+            "  1 = PSNR (Peak Signal-to-Noise Ratio): Optimizes for numerical accuracy, useful for technical evaluations.\n"
+            "  2 = SSIM (Structural Similarity Index): Preserves structural details for better perceptual quality.\n"
+            "Default is VQ (0), which is best for general use."
+        )
     )
 
     parser.add_argument(
@@ -107,6 +115,12 @@ def parse_arguments():
             "If enabled, the script will calculate a VMAF score for every file\n"
             "Only use this flag during testing, as it is very time consuming."
         )
+    )
+
+    parser.add_argument(
+        "--min-resolution",
+        choices=["4k", "2k", "1080p", "720p", "480p", "360p"],
+        help="Minimum resolution threshold for encoding. Videos below this resolution will be skipped."
     )
 
     return parser.parse_args()
@@ -121,7 +135,7 @@ class BatchEncoder:
     
     def __init__(self, directory: str, min_size: Union[str, float] = DEFAULT_MIN_SIZE, 
                  verify:bool=False, force_reset:bool=False, denoise:str=None,
-                 fast_decode:int=1, tune:int=0):
+                 fast_decode:int=DEFAULT_FAST_DECODE, tune:int=DEFAULT_TUNE, min_resolution:Optional[str]=None):
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
         self.directory = directory
@@ -135,6 +149,7 @@ class BatchEncoder:
         self.verify = verify
         self.fast_decode = str(fast_decode)
         self.tune = str(tune)
+        self.min_resolution = min_resolution
         
         self.video_queue = []
         self.success_encodings = set()  # Stores successfully encoded videos
@@ -194,6 +209,23 @@ class BatchEncoder:
                     continue
 
                 media_file = MediaFile(file)
+
+                if self.min_resolution is not None:
+                    """Set to True if all video streams are below the resolution threshold, otherwise False."""
+                    skip_resolution = all(
+                        video_stream.width and video_stream.height and 
+                        (video_stream.width * video_stream.height < RESOLUTION.get(self.min_resolution, 0))
+                        for video_stream in media_file.video_info
+                    )
+
+                    if skip_resolution:
+                        log = (f"Skipping {file} "
+                            f"- All video streams are below threshold of {self.min_resolution}.")
+                        self.logger.debug(log)
+                        self.skipped_videos[file] = log
+                        continue
+
+
                 temp_queue.append((-file_size, media_file.file_path, media_file))  # Max heap (largest size first)
             except ValueError:
                 self.logger.warning(f"Skipping {file}, not a valid video.")
@@ -244,7 +276,7 @@ class BatchEncoder:
                 self.logger.warning(f"❌ Encoding failed for {media_file.file_path}.")
             elif status == EncodingStatus.LARGESIZE:
                 log = f"❌ Encoding skipped for {media_file.file_path} due to large size. The encoded video has been deleted."
-                self.skipped_videos[log]
+                self.skipped_videos[media_file.file_path] = log
                 if os.path.isfile(encoder.output_tmp_file):
                     os.remove(encoder.output_tmp_file)
                 self.logger.warning(log)
@@ -431,10 +463,13 @@ if __name__ == "__main__":
     CustomEncoding = get_custom_encoding_class(args.codec)
 
     if args.codec == 'hevc':
-        encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, force_reset=args.force_reset, denoise=args.denoise if args.denoise else None)
+        encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, 
+                               force_reset=args.force_reset, verify=args.verify,
+                               min_resolution=args.min_resolution, denoise=args.denoise)
     else:
         encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, 
-                               force_reset=args.force_reset, denoise=args.denoise if args.denoise else None, 
+                               force_reset=args.force_reset, denoise=args.denoise, 
+                               verify=args.verify, min_resolution=args.min_resolution,
                                fast_decode=args.fast_decode, tune=args.tune)
 
     encoder.encode_videos()
