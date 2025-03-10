@@ -40,7 +40,7 @@ RESOLUTION = {
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
-    "1080p": "slow",
+    "1080p": "medium",
     "720p": "medium",
     "480p": "fast",
     "360p": "fast"
