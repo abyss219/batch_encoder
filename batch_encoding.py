@@ -257,7 +257,7 @@ class BatchEncoder:
             neg_file_size, _, media_file = heapq.heappop(self.video_queue)
             
             original_size = -neg_file_size
-            self.logger.info(f"🎥 Encoding {media_file.file_path} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
+            self.logger.info(f"🎥 Encoding {media_file.file_name} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
             
             ignore_codec = {} if self.force else self.EFFICIENT_CODEC
