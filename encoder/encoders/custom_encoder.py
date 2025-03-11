@@ -1,9 +1,10 @@
+from __future__ import annotations
 from .av1_encoder import SVTAV1Encoder
 from .hevc_encoder import HevcEncoder
 from .encoder import PresetCRFEncoder
 from ..media import MediaFile, VideoStream
 from ..config import EncodingStatus
-from typing import Type, Optional, List, Dict
+from typing import Type, Optional, List, Dict, Set
 import subprocess
 import time
 import re
@@ -61,10 +62,9 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         ]
 
 
-        # List of efficient codecs that do not require re-encoding
-        EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
-
-        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, delete_original:bool=True, check_size:bool=True, verify:bool=False, **kwargs):
+        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, 
+                     delete_original:bool=True, check_size:bool=True, verify:bool=False, 
+                     ignore_codec:Set={}, **kwargs):
             """
             Initializes the custom encoding class.
             
@@ -76,7 +76,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             """
             super().__init__(media_file, delete_original=delete_original, check_size=check_size,
                              verify=verify, 
-                             ignore_codec=self.EFFICIENT_CODEC, **kwargs)
+                             ignore_codec=ignore_codec, **kwargs)
 
             self.denoise = denoise # Stores the selected denoising level
 

@@ -123,6 +123,14 @@ def parse_arguments():
         help="Minimum resolution threshold for encoding. Videos below this resolution will be skipped."
     )
 
+    parser.add_argument(
+        "--force", 
+        action="store_true", 
+        help=(
+            "Force the encoder to encode all video files even if they are already in desired codec.\n"
+        )
+    )
+
     return parser.parse_args()
 
 
@@ -132,10 +140,14 @@ class BatchEncoder:
 
     STATE_FILE_PREFIX = "encoder_state"
     LOG_FILE_PREFIX = "batch_encoding"
+
+    # List of efficient codecs that do not require re-encoding
+    EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
     
     def __init__(self, directory: str, min_size: Union[str, float] = DEFAULT_MIN_SIZE, 
                  verify:bool=False, force_reset:bool=False, denoise:str=None,
-                 fast_decode:int=DEFAULT_FAST_DECODE, tune:int=DEFAULT_TUNE, min_resolution:Optional[str]=None):
+                 fast_decode:int=DEFAULT_FAST_DECODE, tune:int=DEFAULT_TUNE, min_resolution:Optional[str]=None,
+                 force:bool=False):
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
         self.directory = directory
@@ -150,6 +162,7 @@ class BatchEncoder:
         self.fast_decode = str(fast_decode)
         self.tune = str(tune)
         self.min_resolution = min_resolution
+        self.force = force
         
         self.video_queue = []
         self.success_encodings = set()  # Stores successfully encoded videos
@@ -246,10 +259,14 @@ class BatchEncoder:
             original_size = -neg_file_size
             self.logger.info(f"🎥 Encoding {media_file.file_path} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
             
+            
+            ignore_codec = {} if self.force else self.EFFICIENT_CODEC
+
             encoder = CustomEncoding(media_file, delete_original=True, verify=self.verify, 
-                                     delete_threshold=0, check_size=True,
-                                     denoise=self.denoise, fast_decode=self.fast_decode,
-                                     tune=self.tune)
+                                    delete_threshold=0, check_size=True,
+                                    denoise=self.denoise, fast_decode=self.fast_decode,
+                                    tune=self.tune, ignore_codec=ignore_codec)
+                
             status = encoder.encode_wrapper()
             
             if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
@@ -478,11 +495,13 @@ if __name__ == "__main__":
     if args.codec == 'hevc':
         encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, 
                                force_reset=args.force_reset, verify=args.verify,
-                               min_resolution=args.min_resolution, denoise=args.denoise)
+                               min_resolution=args.min_resolution, denoise=args.denoise,
+                               force=args.force)
     else:
         encoder = BatchEncoder(directory=args.directory, min_size=args.min_size, 
                                force_reset=args.force_reset, denoise=args.denoise, 
                                verify=args.verify, min_resolution=args.min_resolution,
-                               fast_decode=args.fast_decode, tune=args.tune)
+                               fast_decode=args.fast_decode, tune=args.tune,
+                               force=args.force)
 
     encoder.encode_videos()
