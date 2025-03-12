@@ -60,7 +60,7 @@ from .encoders.av1_encoder import LibaomAV1Encoder, SVTAV1Encoder
 from .media import MediaFile
 
 __all__ = [
-    'HevcEncoder', 'LibaomAV1Encoder', 'SVTAV1Encoder', 'MediaFile', 'check_ffmpeg_installed'
+    'HevcEncoder', 'LibaomAV1Encoder', 'SVTAV1Encoder', 'MediaFile'
 ]
 
 if not check_ffmpeg_installed() or not is_ffprobe_available():

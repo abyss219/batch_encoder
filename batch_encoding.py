@@ -555,10 +555,6 @@ class BatchEncoder:
 
 
 if __name__ == "__main__":
-    if not check_ffmpeg_installed():
-        print("Error: ffmpeg not installed.")
-        sys.exit(1)
-
     args = parse_arguments()
 
     if not os.path.isdir(args.directory):
