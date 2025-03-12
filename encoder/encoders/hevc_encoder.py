@@ -1,14 +1,21 @@
+from typing import List, Dict, Optional, Set, Union
 from ..media import MediaFile, VideoStream
 from .encoder import PresetCRFEncoder
 from ..config import *
-from typing import List, Dict, Optional, Set, Union
 
 class HevcEncoder(PresetCRFEncoder):
     """
     Handles HEVC (H.265) encoding with resolution-based parameter selection.
-    
-    This class extends PresetCRFEncoder and applies HEVC-specific settings, 
-    such as selecting the x265 encoder (`libx265`) and ensuring proper stream tagging.
+
+    This class extends `PresetCRFEncoder` and applies HEVC-specific settings, 
+    ensuring efficient encoding with the x265 encoder (`libx265`). It also handles 
+    proper stream tagging for compatibility.
+
+    Key Features:
+    - Uses `libx265` for HEVC encoding.
+    - Supports resolution-based CRF and preset selection.
+    - Ensures proper HEVC tagging (`hvc1`) for playback compatibility.
+    - Avoids redundant re-encoding for already HEVC-encoded streams.
     """
 
     SUPPORTED_PIXEL_FORMATS = [
@@ -22,21 +29,25 @@ class HevcEncoder(PresetCRFEncoder):
 
     DEFAULT_CRF = DEFAULT_CRF_HEVC
 
-    def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Union[str, int, None] = None,
+    def __init__(self, media_file: MediaFile, preset: Optional[str] = None, crf: Optional[Union[str, int]] = None,
                  delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY,
                   delete_threshold:float=DEFAULT_DELETE_THRESHOLD, check_size:bool=DEFAULT_CHECK_SIZE,
                   output_dir: Optional[str] = None, ignore_codec:Set[str]={'hevc'}, **kwargs):
         """
         Initializes the HEVC encoder with default settings for x265 encoding.
-        
+
+        This constructor sets the encoder to `libx265`, applies HEVC-specific defaults, and 
+        ensures existing HEVC streams are copied rather than re-encoded.
+
         Args:
             media_file (MediaFile): The media file to be encoded.
             preset (Optional[str], optional): The preset setting for encoding speed. Defaults to None.
-            crf (Union[str, int, None], optional): The CRF value for quality control. Defaults to None.
+            crf (Optional[Union[str, int]], optional): The CRF value for quality control. Defaults to None.
             delete_original (bool, optional): Whether to delete the original file. Defaults to DEFAULT_DELETE_ORIGIN.
             verify (bool, optional): Whether to verify encoding quality with VMAF. Defaults to DEFAULT_VERIFY.
-            delete_threshold (float, optional): Minimum VMAF score for deletion. Defaults to DEFAULT_DELETE_THRESHOLD.
-            output_dir (Optional[str], optional): Directory for output files. Defaults to None.
+            delete_threshold (float, optional): Minimum VMAF score required for deletion. Defaults to DEFAULT_DELETE_THRESHOLD.
+            check_size (bool, optional): Whether to check if the encoded file is smaller than the original. Defaults to DEFAULT_CHECK_SIZE.
+            output_dir (Optional[str], optional): The directory for output files. Defaults to None (same as input file).
             ignore_codec (Set[str], optional): Set of codecs that should not be re-encoded. Defaults to {"hevc"}.
             **kwargs: Additional keyword arguments passed to the superclass.
         """
@@ -48,13 +59,19 @@ class HevcEncoder(PresetCRFEncoder):
     
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
         """
-        Prepares video conversion arguments specific to HEVC encoding.
-        
-        This function ensures that:
+        Prepares video encoding arguments specific to HEVC encoding.
+
+        This method ensures:
         - Streams already encoded in HEVC are copied instead of re-encoded.
-        - If re-encoding is required, the appropriate preset and CRF values are applied.
-        - Proper HEVC tagging (hvc1) is enforced.
-        
+        - If re-encoding is required, the correct preset and CRF values are applied.
+        - HEVC tagging (`hvc1`) is enforced for compatibility.
+
+        Steps:
+        1. Iterates through video streams in the media file.
+        2. If the stream is already HEVC, copies it instead of re-encoding.
+        3. If encoding is needed, applies `libx265`, preset, CRF, and `hvc1` tagging.
+        4. Logs the selected presets and CRF values.
+
         Returns:
             Dict[VideoStream, List[str]]: A mapping of video streams to their respective FFmpeg arguments.
         """

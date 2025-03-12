@@ -1,27 +1,32 @@
 from __future__ import annotations
+from typing import Type, Optional, List, Dict, Set
+import subprocess
+import time
+import re
+from tqdm import tqdm
 from .av1_encoder import SVTAV1Encoder
 from .hevc_encoder import HevcEncoder
 from .encoder import PresetCRFEncoder
 from ..media import MediaFile, VideoStream
 from ..config import EncodingStatus
-from typing import Type, Optional, List, Dict, Set
-import subprocess
-import time
-import re
-import os
-from tqdm import tqdm
 
 def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
     """
     Dynamically creates a custom encoding class that inherits from either HevcEncoder or AV1Encoder,
     based on the specified codec type.
-    
+
+    This function generates a subclass of the appropriate encoder type (`HevcEncoder` for HEVC encoding
+    or `SVTAV1Encoder` for AV1 encoding). The generated class includes additional features such as:
+    - Denoising filters (NLMeans).
+    - Real-time encoding progress tracking.
+    - Enhanced filename suffix handling.
+
     Args:
-        codec (str): The codec type to use ("hevc" or "av1").
-    
+        codec (str): The codec type to use ("hevc" for H.265 or "av1" for AV1).
+
     Returns:
         Type[PresetCRFEncoder]: A dynamically generated class inheriting from the appropriate encoder.
-    
+
     Raises:
         ValueError: If an unsupported codec is provided.
     """
@@ -34,10 +39,16 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
     class CustomEncoding(parent_class):
         """
         A dynamically created encoding class that inherits from either HevcEncoder or AV1Encoder.
-        Provides additional features like denoising and efficient codec handling.
+
+        This class extends the base encoder by adding:
+        - **Denoising filters** using NLMeans.
+        - **Real-time encoding progress tracking** with tqdm.
+        - **Improved output filename handling** to reflect encoding settings.
+
+        Supports both HEVC and AV1 encoding, with codec-specific optimizations.
         """
 
-        # Dictionary of denoising presets
+        # Dictionary of NLMeans denoising presets
         NLMEANS_SETTINGS = {
             "light": "nlmeans=s=1.0:p=3:r=7",      # Ultra-Light Denoising (Almost No Detail Loss)
             "mild": "nlmeans=s=1.5:p=5:r=9",       # Balanced Denoising (Mild but Effective) - Recommended
@@ -45,6 +56,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
         }
 
+
+        # Supported pixel formats for NLMeans filtering
         NLMEANS_PIXEL_FORMATS = [
             "yuv420p",  # 4:2:0 chroma subsampling, 8-bit, YUV
             "yuv422p",  # 4:2:2 chroma subsampling, 8-bit, YUV
@@ -67,12 +80,17 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                      ignore_codec:Set={}, **kwargs):
             """
             Initializes the custom encoding class.
-            
+
+            Extends the base encoder class by adding optional denoising support.
+
             Args:
                 media_file (MediaFile): The media file to be encoded.
                 denoise (Optional[str]): Denoising level ("light", "mild", "moderate", "heavy"), default is None.
                 delete_original (bool): If True, deletes the original file after encoding. Default is True.
+                check_size (bool): If True, checks if the encoded file is smaller before deleting the original.
                 verify (bool): If True, performs a verification check after encoding. Default is False.
+                ignore_codec (Set[str]): Codecs that should not be re-encoded.
+                **kwargs: Additional parameters passed to the base encoder class.
             """
             super().__init__(media_file, delete_original=delete_original, check_size=check_size,
                              verify=verify, 
@@ -82,8 +100,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
         def prepare_cmd(self) -> Optional[List[str]]:
             """
-            Prepares the FFmpeg command for encoding, including optional denoising and progress tracking.
-            
+            Prepares the FFmpeg command for encoding.
+
+            This method extends the base encoder's FFmpeg command by adding:
+            - **Progress tracking** (`-progress pipe:1 -nostats`).
+
             Returns:
                 Optional[List[str]]: The FFmpeg command arguments, or None if encoding is skipped.
             """
@@ -99,15 +120,21 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         def get_duration(self) -> Optional[float]:
             """
             Retrieves the duration of the video file in seconds.
-            
+
             Returns:
-                Optional[float]: Duration of the video file.
+                Optional[float]: The total duration of the video file.
             """
             return float(self.media_file.video_info[0].duration)
             
         def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
             """
-            Prepares FFmpeg video encoding arguments specific to libaom-AV1.
+            Prepares FFmpeg video encoding arguments, including optional denoising.
+
+            - If a denoise level is specified, applies NLMeans denoising before encoding.
+            - Ensures that the selected pixel format is compatible with NLMeans.
+
+            Returns:
+                Dict[VideoStream, List[str]]: The FFmpeg encoding arguments for each video stream.
             """
             video_args = super().prepare_video_args()
 
@@ -130,7 +157,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         def _encode(self) -> EncodingStatus:
             """
             Performs the encoding process with real-time progress tracking.
-            
+
+            - Displays a progress bar using tqdm.
+            - Tracks encoding speed (real-time vs. encoded time).
+            - Waits for FFmpeg to complete before returning status.
+
             Returns:
                 EncodingStatus: The final encoding status (SUCCESS, FAILED, or SKIPPED).
             """
@@ -202,11 +233,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         def _get_filename_suffix(self) -> str:
             """
             Generates a filename suffix based on encoding settings.
-            
-            The suffix contains the encoder class name and CRF value.
-            
+
+            Ensures that the dynamically generated class name is replaced with the parent class name.
+
             Returns:
-                str: The filename suffix.
+                str: The filename suffix reflecting the encoding settings.
             """
             suffix = super()._get_filename_suffix()
             suffix = suffix.replace(self.__class__.__name__, self.__class__.__bases__[0].__name__)

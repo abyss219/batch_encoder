@@ -1,7 +1,3 @@
-from encoder import *
-from encoder.config import *
-from encoder.utils.logger import setup_logger
-from encoder.encoders.custom_encoder import get_custom_encoding_class
 from typing import Union, List, Optional
 import re
 import os
@@ -11,55 +7,21 @@ import hashlib
 import argparse
 import sys
 import time
+from encoder import *
+from encoder.config import *
+from encoder.utils.logger import setup_logger
+from encoder.encoders.custom_encoder import get_custom_encoding_class
 
+# Supported video file extensions
 VIDEO_EXTENSIONS = {
-    ".mp4",  # MPEG-4 Part 14
-    ".mkv",  # Matroska
-    ".mov",  # QuickTime File Format
-    ".avi",  # Audio Video Interleave
-    ".flv",  # Flash Video
-    ".webm", # WebM
-    ".wmv",  # Windows Media Video
-    ".mpg",  # MPEG-1
-    ".mpeg", # MPEG-1
-    ".m4v",  # MPEG-4 Video File
-    ".3gp",  # 3GPP Multimedia File
-    ".3g2",  # 3GPP2 Multimedia File
-    ".ts",   # MPEG Transport Stream
-    ".m2ts", # Blu-ray Disc Audio-Video (BDAV) MPEG-2 Transport Stream
-    ".mts",  # AVCHD Video File
-    ".vob",  # DVD Video Object
-    ".ogv",  # Ogg Video
-    ".rm",   # RealMedia
-    ".rmvb", # RealMedia Variable Bitrate
-    ".divx", # DivX-Encoded Movie File
-    ".f4v",  # Flash MP4 Video File
-    ".swf",  # Shockwave Flash Movie
-    ".amv",  # Anime Music Video File
-    ".asf",  # Advanced Systems Format
-    ".mxf",  # Material Exchange Format
-    ".dv",   # Digital Video File
-    ".qt",   # QuickTime Movie
-    ".yuv",  # YUV Video File
-    ".mpe",  # MPEG Movie File
-    ".mpv",  # MPEG Elementary Stream Video File
-    ".m1v",  # MPEG-1 Video File
-    ".m2v",  # MPEG-2 Video
-    ".svi",  # Samsung Video File
-    ".drc",  # Dirac Video File
-    ".ivf",  # Indeo Video Format
-    ".nsv",  # Nullsoft Streaming Video
-    ".fli",  # FLIC Animation
-    ".flc",  # FLIC Animation
-    ".gxf",  # General eXchange Format
-    ".mxf",  # Material Exchange Format
-    ".roq",  # RoQ Video
-    ".smi",  # Synchronized Multimedia Integration Language
-    ".smil", # Synchronized Multimedia Integration Language
-    ".wm",   # Windows Media Video
-    ".wtv"   # Windows Recorded TV Show
+    ".mp4", ".mkv", ".mov", ".avi", ".flv", ".webm", ".wmv", ".mpg", ".mpeg", ".m4v",
+    ".3gp", ".3g2", ".ts", ".m2ts", ".mts", ".vob", ".ogv", ".rm", ".rmvb", ".divx",
+    ".f4v", ".swf", ".amv", ".asf", ".mxf", ".dv", ".qt", ".yuv", ".mpe", ".mpv",
+    ".m1v", ".m2v", ".svi", ".drc", ".ivf", ".nsv", ".fli", ".flc", ".gxf", ".roq",
+    ".smi", ".smil", ".wm", ".wtv"
 }
 
+# Default settings
 DEFAULT_MIN_SIZE = "100MB"
 DEFAULT_DENOISE = "none"
 DEFAULT_CODEC = 'hevc'
@@ -67,21 +29,76 @@ DEFAULT_FAST_DECODE = 1
 DEFAULT_TUNE = 0
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Batch video encoding script.")
-    parser.add_argument("directory", help="Directory containing videos to encode.")
-    parser.add_argument("--min-size", default=DEFAULT_MIN_SIZE, help=f"Minimum file size to encode (e.g., '500MB', '1GB'). Default is '{DEFAULT_MIN_SIZE}'")
+    """
+    Parses command-line arguments for batch video encoding.
+
+    This function sets up command-line options to control batch encoding of videos using 
+    HEVC (H.265) or AV1, with features like resolution-based filtering, quality tuning, 
+    verification with VMAF, and multi-threaded optimizations.
+
+    Available options:
+    - Input directory containing videos
+    - Minimum file size threshold for encoding
+    - Codec selection (HEVC or AV1)
+    - Video denoising options
+    - CRF (Constant Rate Factor) control for quality vs. file size
+    - Encoding preset selection for speed vs. compression efficiency
+    - Resolution-based filtering to skip small videos
+    - Fast decode optimization for AV1
+    - Verification of encoded file quality using VMAF
+    - Option to reset encoding progress
+
+    Returns:
+        argparse.Namespace: Parsed arguments containing user-specified values.
+    """
+    parser = argparse.ArgumentParser(
+        description="Batch video encoding script with resume support."
+    )
+    
+    parser.add_argument(
+        "directory", 
+        help="Path to the directory containing video files for encoding."
+    )
+    
+    parser.add_argument(
+        "--min-size", 
+        default=DEFAULT_MIN_SIZE, 
+        help=(
+            "Specify the minimum file size for encoding.\n"
+            "Example formats: '500MB', '1GB', '200KB'.\n"
+            "Videos smaller than this threshold will be skipped.\n"
+            f"Default: {DEFAULT_MIN_SIZE}."
+        )
+    )
+    
     parser.add_argument(
         "--codec",
         choices=["hevc", "av1"],
         default=DEFAULT_CODEC,
-        help=f"Select the codec to use for encoding. Options: 'hevc' (H.265) or 'av1'. Default is '{DEFAULT_CODEC}'."
+        help=(
+            "Choose the codec for encoding:\n"
+            "  hevc - High Efficiency Video Coding (H.265) [default]\n"
+            "  av1  - Next-gen AV1 codec for better compression and efficiency."
+        )
     )
-    parser.add_argument("--force-reset", action="store_true", help="Reset encoding state before starting.")
-    
+
+
+    parser.add_argument(
+        "--force-reset", 
+        action="store_true", 
+        help="Reset the encoding state and restart the process from scratch."
+    )
+
     parser.add_argument(
         "--denoise",
         choices=["light", "mild", "moderate", "heavy"],
-        help="Apply denoising filter. Options: 'none', 'light', 'mild', 'moderate', 'heavy'. If omitted, no denoising will be applied."
+        help=(
+            "Apply a denoising filter to improve video quality:\n"
+            "  light    - Reduces minor noise while preserving details\n"
+            "  mild     - Balanced denoising, removes moderate noise\n"
+            "  moderate - Good for reducing grain in low-light videos\n"
+            "  heavy    - Strong denoising, suitable for old/noisy videos"
+        )
     )
 
 
@@ -89,21 +106,25 @@ def parse_arguments():
         "--fast-decode", 
         type=int, 
         choices=[0, 1, 2], 
-        default=DEFAULT_SVTAV1_FAST_DECODE, 
-        help="Optimize for decoding speed (0-3). Applies only to AV1 encoding."
+        default=DEFAULT_FAST_DECODE, 
+        help=(
+            "Enable fast decode optimizations for AV1:\n"
+            "  0 - No optimization (best compression, slowest decoding)\n"
+            "  1 - Balanced mode (good compression, faster decoding)\n"
+            "  2 - Maximum optimization (fastest decoding, larger file sizes)"
+        )
     )
 
     parser.add_argument(
         "--tune", 
         type=int, 
         choices=[0, 1, 2], 
-        default=DEFAULT_SVTAV1_TUNE, 
+        default=DEFAULT_TUNE, 
         help=(
-            "Specifies the tuning metric for encoding quality:\n"
-            "  0 = VQ  (Visual Quality): Prioritizes subjective visual quality, making the video look more natural.\n"
-            "  1 = PSNR (Peak Signal-to-Noise Ratio): Optimizes for numerical accuracy, useful for technical evaluations.\n"
-            "  2 = SSIM (Structural Similarity Index): Preserves structural details for better perceptual quality.\n"
-            "Default is VQ (0), which is best for general use."
+            "Select the tuning metric for encoding quality:\n"
+            "  0 - VQ (Visual Quality): Best subjective quality for general use\n"
+            "  1 - PSNR: Optimizes for peak signal-to-noise ratio (technical evaluation)\n"
+            "  2 - SSIM: Preserves structural details for better perceptual quality"
         )
     )
 
@@ -111,23 +132,28 @@ def parse_arguments():
         "--verify", 
         action="store_true", 
         help=(
-            "Verify the encoded file quality using VMAF before deleting the original video.\n"
-            "If enabled, the script will calculate a VMAF score for every file\n"
-            "Only use this flag during testing, as it is very time consuming."
+            "Enable verification of encoded file quality using VMAF.\n"
+            "If enabled, the script will compare the original and encoded videos\n"
+            "and only delete the original if the VMAF score meets the threshold."
         )
     )
 
     parser.add_argument(
         "--min-resolution",
         choices=["4k", "2k", "1080p", "720p", "480p", "360p"],
-        help="Minimum resolution threshold for encoding. Videos below this resolution will be skipped."
+        help=(
+            "Set the minimum resolution threshold for encoding.\n"
+            "Videos with lower resolutions will be skipped.\n"
+            "Options: 4k, 2k, 1080p, 720p, 480p, 360p."
+        )
     )
 
     parser.add_argument(
         "--force", 
         action="store_true", 
         help=(
-            "Force the encoder to encode all video files even if they are already in desired codec.\n"
+            "Force encoding of all videos, even if they are already in the desired codec.\n"
+            "By default, videos in efficient codecs (HEVC, AV1, VP9, etc.) are skipped."
         )
     )
 
@@ -136,8 +162,21 @@ def parse_arguments():
 
 
 class BatchEncoder:
-    """Handles batch encoding of videos in a directory to AV1 format with resume support."""
+    """
+    Handles batch video encoding for an entire directory with resume support.
 
+    This class automates the process of encoding videos using HEVC (H.265) or AV1, 
+    providing features such as:
+    - Recursive file discovery
+    - Resolution-based filtering
+    - State saving for resume support
+    - Multi-threaded prioritization of larger videos first
+    - Automatic skipping of already encoded files
+    - Encoding verification using VMAF
+    - Custom denoising options
+
+    It prioritizes larger videos using a max heap to maximize storage savings efficiently.
+    """
     STATE_FILE_PREFIX = "encoder_state"
     LOG_FILE_PREFIX = "batch_encoding"
 
@@ -148,6 +187,23 @@ class BatchEncoder:
                  verify:bool=False, force_reset:bool=False, denoise:str=None,
                  fast_decode:int=DEFAULT_FAST_DECODE, tune:int=DEFAULT_TUNE, min_resolution:Optional[str]=None,
                  force:bool=False):
+        """
+        Initializes the BatchEncoder instance.
+
+        Args:
+            directory (str): The directory containing video files to be encoded.
+            min_size (Union[str, float]): Minimum file size threshold for encoding. 
+                                          Videos smaller than this value are skipped.
+            verify (bool): Whether to verify encoded video quality using VMAF before deleting originals.
+            force_reset (bool): If True, resets encoding progress and starts fresh.
+            denoise (str): Denoising filter level ('light', 'mild', 'moderate', 'heavy') or None.
+            fast_decode (int): Fast decode setting for AV1 (0, 1, or 2).
+            tune (int): AV1 tuning metric (0 = VQ, 1 = PSNR, 2 = SSIM).
+            min_resolution (Optional[str]): Minimum resolution threshold (e.g., '720p'). 
+                                            Videos below this are skipped.
+            force (bool): If True, encodes all videos, even if they are already in an efficient codec.
+        """
+
         if not os.path.isdir(directory):
             raise ValueError(f"The input to {self.__class__.__name__} must be a directory")
         self.directory = directory
@@ -191,11 +247,24 @@ class BatchEncoder:
 
     @staticmethod
     def hash_directory(directory: str) -> str:
-        """Generate a short hash for the directory path."""
+        """
+        Generate a short hash for the directory path.
+
+        Args:
+            directory (str): Path of the directory to hash.
+
+        Returns:
+            str: An 8-character hash representing the directory.
+        """
         return hashlib.md5(directory.encode()).hexdigest()[:8]  # Short hash
 
     def get_video_files(self) -> List[str]:
-        """Retrieve all video files under the directory and its subdirectories."""
+        """
+        Recursively retrieves all video files in the directory.
+
+        Returns:
+            List[str]: A list of video file paths.
+        """
         video_files = []
         for root, _, files in os.walk(self.directory):
             for file in files:
@@ -205,7 +274,10 @@ class BatchEncoder:
         return video_files
 
     def prepare_video_queue(self):
-        """Find and prioritize videos in the directory, excluding already encoded ones."""
+        """
+        Scans the directory and prepares a priority queue for encoding, prioritizing larger files.
+        Skips files that have already been processed.
+        """
         video_files = self.get_video_files()
         temp_queue = []
 
@@ -252,7 +324,10 @@ class BatchEncoder:
     
     
     def encode_videos(self):
-        """Encode videos from the priority queue."""
+        """
+        Processes the video queue, encoding videos in priority order.
+        """
+
         while self.video_queue:
             neg_file_size, _, media_file = heapq.heappop(self.video_queue)
             
