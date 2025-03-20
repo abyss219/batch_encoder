@@ -114,6 +114,7 @@ class MediaFile:
     def __init__(self, file_path: str):
         self.logger = setup_logger(self.__class__.__name__, os.path.join(LOG_DIR, "media_file.log"))
         self.file_path: str = file_path
+        self.file_name = os.path.basename(self.file_path)
         
         self.logger.debug(f"🔍 Initializing MediaFile for: {file_path}")
         
@@ -124,7 +125,7 @@ class MediaFile:
         
         self.audio_info = self.get_audio_info()
 
-        self.file_name = os.path.basename(self.file_path)
+        
 
 
     def compare(self, other: MediaFile) -> float:
@@ -267,7 +268,7 @@ class MediaFile:
                         frame_rate == 0 or  # Invalid frame rate
                         index is None # Ensure index exists
                     ):
-                        self.logger.warning(f"❌ Invalid video stream detected: {asdict(stm)}")
+                        self.logger.warning(f"❌ Invalid video stream detected for file {self.file_name}: {asdict(stm)}")
                     else:
                         video_streams.append(stm)
                     
