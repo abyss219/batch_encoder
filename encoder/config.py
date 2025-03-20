@@ -40,7 +40,7 @@ RESOLUTION = {
 DEFAULT_PRESET_HEVC = {
     "4k": "slow",
     "2k": "slow",
-    "1080p": "slow",
+    "1080p": "medium",
     "720p": "medium",
     "480p": "fast",
     "360p": "fast"
@@ -60,7 +60,7 @@ DEFAULT_CRF_HEVC = {
 DEFAULT_PRESET_SVTAV1 = {
     "4k": 4,
     "2k": 4,
-    "1080p": 4,
+    "1080p": 5,
     "720p": 5,
     "480p": 6,
     "360p": 6
