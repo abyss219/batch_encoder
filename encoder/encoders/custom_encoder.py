@@ -124,7 +124,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             Returns:
                 Optional[float]: The total duration of the video file.
             """
-            return float(self.media_file.video_info[0].duration)
+            duration = self.media_file.video_info[0].duration
+            return float(duration) if duration else None
             
         def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
             """
