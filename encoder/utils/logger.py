@@ -2,6 +2,7 @@ import logging
 from colorlog import ColoredFormatter
 import os
 import sys
+from typing import Optional
 
 try:
     import colorama
@@ -46,6 +47,8 @@ def terminal_supports_color():
 
 # ANSI escape codes
 RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
 COLOR_CODES = {
     "red": "\033[31m",
     "green": "\033[32m",
@@ -53,12 +56,10 @@ COLOR_CODES = {
     "blue": "\033[34m",
     "magenta": "\033[35m",
     "cyan": "\033[36m",
-    "bold": "\033[1m",
-    "dim": "\033[2m",
 }
 COLOR_SUPPORT = terminal_supports_color()
 
-def setup_logger(log_name: str, log_file: str = "logs/default.log", level=logging.INFO):
+def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", level=logging.INFO):
     """
     Sets up a logger with file and color-capable console output using colorlog.
     """
@@ -66,24 +67,26 @@ def setup_logger(log_name: str, log_file: str = "logs/default.log", level=loggin
     logger.setLevel(level)
 
     if not logger.hasHandlers():
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        
+        if log_file:
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
-        # File handler (no color)
-        file_format = logging.Formatter(
-            "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
-        )
-        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-        file_handler.setFormatter(file_format)
-        logger.addHandler(file_handler)
+            # File handler (no color)
+            file_format = logging.Formatter(
+                "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
+            )
+            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            file_handler.setFormatter(file_format)
+            logger.addHandler(file_handler)
 
         # Console handler (with color if supported and colorlog is available)
         console_handler = logging.StreamHandler()
         if COLOR_SUPPORT:
             console_format = ColoredFormatter(
                 fmt=(
-                    f"{COLOR_CODES['dim']}[%(asctime)s]{RESET} "
+                    f"{DIM}[%(asctime)s]{RESET} "
                     f"{COLOR_CODES['cyan']}[%(name)s]{RESET} "
-                    "%(log_color)s[%(levelname)s] "
+                    "%(log_color)s[%(levelname)s]\033[0m "
                     "%(message)s"
                 ),
                 log_colors={
@@ -104,13 +107,27 @@ def setup_logger(log_name: str, log_file: str = "logs/default.log", level=loggin
 
     return logger
 
-def color_text(text, color="cyan"):
+def color_text(text: str, color: str, bold: bool = False, dim: bool = False):
     if COLOR_SUPPORT and color in COLOR_CODES:
-        return f"{COLOR_CODES[color]}{text}{RESET}"
+        style = ""
+        if bold:
+            style += BOLD
+        if dim:
+            style += DIM
+        return f"{style}{COLOR_CODES[color]}{text}{RESET}"
     return text
 
 '''
-logger.info(f"{color_text('[SUCCESS]', 'green', color_ok)} File processed.")
-logger.warning(f"{color_text('Caution:', 'yellow', color_ok)} Low disk space.")
-logger.debug(f"Debug info: {color_text('temp_var = 42', 'magenta', color_ok)}")
+logger.info(f"{color_text('[SUCCESS]', 'green')} File processed.")
+logger.warning(f"{color_text('Caution:', 'yellow')} Low disk space.")
+logger.debug(f"Debug info: {color_text('temp_var = 42', 'magenta')}")
 '''
+if __name__ == "__main__":
+    logger = setup_logger("Test", log_file=None, level=logging.DEBUG)
+    logger.debug("This is a debug message.")
+    logger.info("This is an info message.")
+    logger.warning("This is a warning.")
+    logger.error("This is an error.")
+    logger.critical("This is critical.")
+    logger.info(f"{color_text('[SUCCESS]', 'magenta')} File processed.")
+    logger.warning(f"{color_text('Caution:', 'cyan', bold=True, dim=True)} Low disk space.")

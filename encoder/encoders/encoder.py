@@ -3,7 +3,7 @@ import subprocess
 import sys
 from abc import ABC
 from typing import List, Dict, Optional, Set, Union
-from ..utils.logger import setup_logger
+from ..utils.logger import setup_logger, color_text
 from ..config import *
 from ..media import MediaFile, VideoStream, AudioStream
 
@@ -53,7 +53,7 @@ class CRFEncoder(ABC):
             ignore_codec (Set[str], optional): Set of codecs to be copied without re-encoding. Defaults to an empty set.
         """
 
-        self.logger = setup_logger("Encoding", os.path.join(LOG_DIR, "encoder.log"))
+        self.logger = setup_logger(self.__class__.__name__, os.path.join(LOG_DIR, "encoder.log"))
         self.media_file = media_file
         self.encoder = encoder
         self.crf = int(crf) if crf else crf # Convert CRF to an integer if provided
@@ -336,7 +336,7 @@ class CRFEncoder(ABC):
             self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
             os.remove(self.media_file.file_path)
             os.rename(self.output_tmp_file, self.new_file_path)
-            self.logger.info(f"📁 Successfully replaced {self.media_file.file_name} with {os.path.basename(self.new_file_path)}")
+            self.logger.debug(f"📁 Successfully replaced {color_text(self.media_file.file_name, dim=True)} with {color_text(os.path.basename(self.new_file_path), dim=True)}")
         except OSError as e:
             self.logger.error(f"❌ Failed to delete original file: {e}")
             return EncodingStatus.FAILED

@@ -9,7 +9,7 @@ import sys
 import time
 from encoder import *
 from encoder.config import *
-from encoder.utils.logger import setup_logger
+from encoder.utils.logger import setup_logger, color_text
 from encoder.encoders.custom_encoder import get_custom_encoding_class
 
 # Supported video file extensions
@@ -332,7 +332,13 @@ class BatchEncoder:
             neg_file_size, _, media_file = heapq.heappop(self.video_queue)
             
             original_size = -neg_file_size
-            self.logger.info(f"🎥 Encoding {media_file.file_name} of size {CustomEncoding.human_readable_size(original_size)}, {self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} videos left in the queue")
+            self.logger.info(
+                f"🎥 Encoding {color_text(media_file.file_name, dim=True)} of size "
+                f"{color_text(CustomEncoding.human_readable_size(original_size), 'magenta')}, "
+                f"{self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} "
+                f"videos has been processed"
+            )
+
             
             
             ignore_codec = {} if self.force else self.EFFICIENT_CODEC
@@ -346,7 +352,7 @@ class BatchEncoder:
             
             if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
                 encoded_size = os.path.getsize(encoder.new_file_path)
-                self.logger.info(encoder.new_file_path)
+                self.logger.debug(encoder.new_file_path)
 
                 # log for size reduction
                 self.total_original_size += original_size
@@ -356,7 +362,7 @@ class BatchEncoder:
 
                 self.success_encodings.add(media_file.file_path)
 
-                self.logger.info(f"✅ Encoding completed: {media_file.file_name} ({CustomEncoding.human_readable_size(original_size)} → {CustomEncoding.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+                self.logger.info(f"✅ Encoding completed: {color_text(media_file.file_name, dim=True)} ({color_text(CustomEncoding.human_readable_size(original_size), dim=True)} → {color_text(CustomEncoding.human_readable_size(encoded_size), 'cyan')}, Reduction: {color_text(f"{size_reduction}:.2f%", 'magenta')})")
 
             elif status == EncodingStatus.SKIPPED:
                 log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
@@ -413,7 +419,7 @@ class BatchEncoder:
         try:
             with open(self.state_file, "wb") as f:
                 pickle.dump(state, f)
-            self.logger.info("State saved successfully.")
+            self.logger.debug("State saved successfully.")
         except Exception as e:
             self.logger.error(f"Failed to save state: {e}")
 

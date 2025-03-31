@@ -4,6 +4,7 @@ import subprocess
 import time
 import re
 from tqdm import tqdm
+from ..utils.logger import color_text
 from .av1_encoder import SVTAV1Encoder
 from .hevc_encoder import HevcEncoder
 from .encoder import PresetCRFEncoder
@@ -171,7 +172,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 self.logger.warning(f"⚠️ Skipping encoding: {self.media_file.file_path} (Already in desired format).")
                 return EncodingStatus.SKIPPED
             
-            self.logger.info(f"🚀 Final ffmpeg arg: {" ".join(ffmpeg_cmd)}")
+            self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), dim=True)}")
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
             # Get video duration

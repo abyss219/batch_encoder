@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional, Set, Union
+from ..utils.logger import color_text
 from ..media import MediaFile, VideoStream
 from .encoder import PresetCRFEncoder
 from ..config import *
@@ -112,5 +113,5 @@ class HevcEncoder(PresetCRFEncoder):
             video_args[video_stream] = sub_args
         
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
-        self.logger.info(f'🔹 HEVC encoding initialized for "{self.media_file.file_name}" | Preset: {", ".join(preset_log)} | CRF: {", ".join(crf_log)}')
+        self.logger.info(f'🔹 HEVC encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Preset: {color_text(", ".join(preset_log), 'cyan')} | CRF: {color_text(", ".join(crf_log), 'cyan')}')
         return video_args
