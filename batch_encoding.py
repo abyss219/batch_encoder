@@ -383,6 +383,8 @@ class BatchEncoder:
 
         total_time_seconds = time.time() - self.start_time
 
+        self.log_final_results()
+
         self.logger.info(
             "\n" + "-" * 50 + "\n"
             f"📊 All tasks finished. Final average size reduction: {final_avg_reduction:.2f}%. "
@@ -392,8 +394,6 @@ class BatchEncoder:
             f"💾 Total disk space saved: {CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size)}."
             f"⌛ Time taken current pass: {self.format_time(total_time_seconds)}"
         )
-
-        self.log_final_results()
         
 
     def save_state(self):
