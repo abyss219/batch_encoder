@@ -107,14 +107,16 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
 
     return logger
 
-def color_text(text: str, color: str, bold: bool = False, dim: bool = False):
+def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
     if COLOR_SUPPORT and color in COLOR_CODES:
         style = ""
         if bold:
             style += BOLD
         if dim:
             style += DIM
-        return f"{style}{COLOR_CODES[color]}{text}{RESET}"
+        if color in COLOR_CODES:
+            style += COLOR_CODES[color]
+        return f"{style}{text}{RESET}"
     return text
 
 '''
