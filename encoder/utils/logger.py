@@ -57,6 +57,7 @@ COLOR_CODES = {
     "blue": "\033[34m",
     "magenta": "\033[35m",
     "cyan": "\033[36m",
+    "reset": RESET
 }
 COLOR_SUPPORT = terminal_supports_color()
 COLOR_END_MARKER = "[[COLOR_END]]"
@@ -160,10 +161,10 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
 
 def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
     if COLOR_SUPPORT and color in COLOR_CODES:
-        style = COLOR_CODES[color]
+        style = RESET + (COLOR_CODES[color] if color is not 'reset' else "")
         if bold:
             style += BOLD
         if dim:
             style += DIM
-        return f"{COLOR_BEGIN_MARKER}{RESET}{style}{text}{COLOR_END_MARKER}"
+        return f"{COLOR_BEGIN_MARKER}{style}{text}{COLOR_END_MARKER}"
     return text

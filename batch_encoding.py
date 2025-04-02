@@ -362,7 +362,12 @@ class BatchEncoder:
 
                 self.success_encodings.add(media_file.file_path)
 
-                self.logger.info(f"✅ Encoding completed: {color_text(media_file.file_name, dim=True)} ({color_text(CustomEncoding.human_readable_size(original_size), dim=True)} → {color_text(CustomEncoding.human_readable_size(encoded_size), 'cyan')}, Reduction: {color_text(f"{size_reduction}:.2f%", 'magenta')})")
+                self.logger.info(
+                    f"✅ Encoding completed: {color_text(media_file.file_name, dim=True)} "
+                    f"({color_text(f'{CustomEncoding.human_readable_size(original_size)} → {CustomEncoding.human_readable_size(encoded_size)}', 'cyan', bold=True)}, "
+                    f"Reduction: {color_text(f'{size_reduction:.2f}%', 'magenta')})"
+                )
+
 
             elif status == EncodingStatus.SKIPPED:
                 log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
@@ -377,10 +382,15 @@ class BatchEncoder:
                 size_log = ""
                 if os.path.isfile(encoder.output_tmp_file):
                     encoded_size = os.path.getsize(encoder.output_tmp_file)
-                    size_log = CustomEncoding.human_readable_size(original_size) + " → " + CustomEncoding.human_readable_size(encoded_size)
+                    size_log = color_text(
+                        CustomEncoding.human_readable_size(original_size) +
+                        " → " +
+                        CustomEncoding.human_readable_size(encoded_size),
+                        'cyan', bold=True
+                    )
                     os.remove(encoder.output_tmp_file)
                     
-                log = f"❌ Encoding skipped for {media_file.file_path} due to large size {size_log}. The encoded video has been deleted."
+                log = f"❌ Encoding skipped for {color_text(media_file.file_path, dim=True)} due to large size {size_log}. The encoded video has been deleted."
                 self.logger.warning(log)
             
             self.save_state()  # Save state in case of failure
@@ -396,14 +406,24 @@ class BatchEncoder:
         self.log_final_results()
 
         self.logger.info(
-            "\n" + "-" * 50 + "\n"
-            f"📊 All tasks finished. Final average size reduction: {final_avg_reduction:.2f}%. "
-            f"✅ Successful: {len(self.success_encodings)}, "
-            f"❌ Failed: {len(self.failed_encodings)}, "
-            f"⏭️ Skipped: {len(self.skipped_videos)}, "
-            f"💾 Total disk space saved: {CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size)}."
-            f"⌛ Time taken current pass: {self.format_time(total_time_seconds)}"
+            color_text("\n" + "-" * 50 + "\n", dim=True) +
+            "📊 All tasks finished.\n"
+            "✅ Successful: "
+            f"{color_text(str(len(self.success_encodings)), 'cyan', bold=True)}, "
+            "❌ Failed: "
+            f"{color_text(str(len(self.failed_encodings)), 'red', bold=True)}, "
+            "⏭️ Skipped: "
+            f"{color_text(str(len(self.skipped_videos)), 'yellow', bold=True)}.\n"
+            "📉 Final average size reduction: "
+            f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')}.\n"
+            "💾 Total disk space saved: "
+            f"{color_text(CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}. "
+            "⌛ Time taken current pass: "
+            f"{color_text(self.format_time(total_time_seconds), 'blue', bold=True)}"
         )
+
+
+
         
 
     def save_state(self):
@@ -482,7 +502,7 @@ class BatchEncoder:
 
         self.save_state()  # Save the reset state
         open(self.log_file, "w").close()  # Clear file
-        self.logger.info("Encoding state reset.")
+        self.logger.debug("Encoding state reset.")
 
     @staticmethod
     def parse_size(size: Union[str, float]) -> int:
@@ -509,36 +529,43 @@ class BatchEncoder:
         """Log the final encoding summary including success, failure, skipped videos, 
         total processed, average size reduction, and total encoding time."""
 
-        self.logger.info("==== Encoding Process Detail ====")
+        self.logger.info(color_text("==== Encoding Process Detail ====", dim=True))
 
         total_processed = len(self.success_encodings) + len(self.failed_encodings) + len(self.skipped_videos)
-        
+
         # ✅ Log total processed files
-        self.logger.info(f"Total Processed Videos: {total_processed}")
+        self.logger.info(f"Total Processed Videos: {color_text(str(total_processed), 'blue', bold=True)}")
 
         # ✅ Log successfully encoded videos
         if self.success_encodings:
-            self.logger.info(f"Successfully Encoded {len(self.success_encodings)} Videos.")
+            self.logger.info(
+                f"✅ Successfully Encoded: {color_text(str(len(self.success_encodings)), 'cyan', bold=True)} videos."
+            )
         else:
-            self.logger.info("No videos were successfully encoded.")
+            self.logger.info(color_text("❌ No videos were successfully encoded.",))
 
         # ✅ Log skipped videos with reasons
         if self.skipped_videos:
-            self.logger.info(f"Skipped {len(self.skipped_videos)} Videos:")
+            self.logger.info(
+                f"⏭️ Skipped: {color_text(str(len(self.skipped_videos)), 'yellow', bold=True)} videos:"
+            )
             for file_path, reason in self.skipped_videos.items():
-                self.logger.info(f"  - {file_path} | Reason: {reason}")
+                self.logger.info(f"  - {file_path} | Reason: {color_text(reason, 'reset', dim=True)}")
         else:
-            self.logger.info("No videos were skipped.")
+            self.logger.info(color_text("⏭️ No videos were skipped.",))
 
         # ✅ Log failed encodings
         if self.failed_encodings:
-            self.logger.info(f"Failed {len(self.failed_encodings)} Encodings:")
+            self.logger.info(
+                f"❌ Failed: {color_text(str(len(self.failed_encodings)), 'red', bold=True)} encodings:"
+            )
             for file_path in self.failed_encodings:
-                self.logger.info(f"  - {file_path}")
+                self.logger.warning(f"  - {color_text(file_path, 'yellow', dim=True)}")
         else:
-            self.logger.info("No failed encodings.")
+            self.logger.info(color_text("✅ No failed encodings.", dim=True))
 
-        self.logger.info("====================================")
+        self.logger.info(color_text("====================================", dim=True))
+
 
     @staticmethod
     def format_time(seconds: float) -> str:
