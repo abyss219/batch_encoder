@@ -165,29 +165,5 @@ def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False
             style += BOLD
         if dim:
             style += DIM
-        if color in COLOR_CODES:
-            style += COLOR_CODES[color]
         return f"{COLOR_BEGIN_MARKER}{RESET}{style}{text}{COLOR_END_MARKER}"
     return text
-
-'''
-logger.info(f"{color_text('[SUCCESS]', 'green')} File processed.")
-logger.warning(f"{color_text('Caution:', 'yellow')} Low disk space.")
-logger.debug(f"Debug info: {color_text('temp_var = 42', 'magenta')}")
-'''
-if __name__ == "__main__":
-    logger = setup_logger("Test", log_file=None, level=logging.DEBUG)
-    # logger.debug("This is a debug message.")
-    # logger.info("This is an info message.")
-    # logger.warning("This is a warning.")
-    # logger.error("This is an error.")
-    # logger.critical("This is critical.")
-
-    # green_text = color_text('[This is the yellow text]', 'yellow', dim=True)
-    
-    # logger.info(f"{color_text(green_text + '[SUCCESS]', 'magenta')} File processed.")
-    # logger.warning(f"{color_text('Caution:', 'cyan', bold=True, dim=True)} Low disk space.")
-
-    dim_yellow_text = color_text('[yellow]', 'yellow', dim=True, bold=False)
-    blue_text = color_text(f'[magenta_start] {dim_yellow_text} [magenta_end]', 'magenta', bold=True)
-    logger.debug(f"start {blue_text} end")
