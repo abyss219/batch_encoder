@@ -161,7 +161,7 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
 
 def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
     if COLOR_SUPPORT and color in COLOR_CODES:
-        style = RESET + (COLOR_CODES[color] if color is not 'reset' else "")
+        style = RESET + (COLOR_CODES[color] if color != 'reset' else "")
         if bold:
             style += BOLD
         if dim:
