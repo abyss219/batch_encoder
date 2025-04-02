@@ -160,6 +160,9 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
     return logger
 
 def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
+    if not isinstance(text, str):
+        text = str(text)
+        
     if COLOR_SUPPORT and color in COLOR_CODES:
         style = RESET + (COLOR_CODES[color] if color != 'reset' else "")
         if bold:

@@ -335,7 +335,7 @@ class BatchEncoder:
             self.logger.info(
                 f"🎥 Encoding {color_text(media_file.file_name, dim=True)} of size "
                 f"{color_text(CustomEncoding.human_readable_size(original_size), 'magenta')}, "
-                f"{self.initial_queue_size - len(self.video_queue)}/{self.initial_queue_size} "
+                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')}/{self.initial_queue_size} "
                 f"videos has been processed"
             )
 
@@ -468,7 +468,7 @@ class BatchEncoder:
                     self.total_encoded_size = state.get("total_encoded_size", 0)
 
                     if len(self.video_queue) <= 0:
-                        if len(self.encoded_video_count) > 0:
+                        if self.encoded_video_count > 0:
                             self.logger.info(f"Previous encoding session has finished. Restarting for {self.directory}.")
                         else:
                             self.logger.info(f"Previous encoding hasn't started. Restarting for {self.directory}.")
@@ -484,7 +484,8 @@ class BatchEncoder:
                 else:
                     self.logger.warning(f"Directory has changed from {state.get('directory')} to {self.directory}. Resetting state.")
             except Exception as e:
-                self.logger.error(f"Failed to load state: {e}")
+                self.logger.error(f"Failed to load state")
+                self.logger.exception(e)
         else:
             self.logger.info(f"No previous encoding session found for {self.directory}.")
         return False
