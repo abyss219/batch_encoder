@@ -3,6 +3,7 @@ from colorlog import ColoredFormatter
 import os
 import sys
 from typing import Optional
+import re
 
 try:
     import colorama
@@ -58,6 +59,56 @@ COLOR_CODES = {
     "cyan": "\033[36m",
 }
 COLOR_SUPPORT = terminal_supports_color()
+COLOR_END_MARKER = "[[COLOR_END]]"
+COLOR_BEGIN_MARKER = "[[COLOR_BEGIN]]"
+
+class SmartColorFormatter(ColoredFormatter):
+    
+    COLOR_RE = re.compile(r'(\033\[\d{1,2}m|\[\[COLOR_BEGIN\]\]|\[\[COLOR_END\]\])')
+
+    def format(self, record):
+        msg = super().format(record)
+        return self._process_color_stack(msg)
+
+    def _process_color_stack(self, msg: str) -> str:
+
+        color_stack = []
+        output = ""
+
+        tokens = self.COLOR_RE.split(msg)
+        n = len(tokens)
+        i = 0
+
+        color = RESET
+        dim = False
+        bold = False
+
+        for i in range(n):
+            token = tokens[i]
+            if not token:
+                continue
+
+            elif token.startswith('\033['):
+                if token == DIM:
+                    dim = True
+                elif token == BOLD:
+                    bold = True
+                elif token == RESET:
+                    color, dim, bold = RESET, False, False
+                else:
+                    color = token
+                output += token
+            elif token == COLOR_BEGIN_MARKER:
+                color_stack.append((color, dim, bold))
+            elif token == COLOR_END_MARKER:
+                color, dim, bold = color_stack.pop()
+                style = RESET + color + (DIM if dim else "") + (BOLD if bold else "")
+                output += style
+
+            else:                
+                output += token
+
+        return output
 
 def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", level=logging.INFO):
     """
@@ -82,11 +133,11 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
         # Console handler (with color if supported and colorlog is available)
         console_handler = logging.StreamHandler()
         if COLOR_SUPPORT:
-            console_format = ColoredFormatter(
+            console_format = SmartColorFormatter(
                 fmt=(
                     f"{DIM}[%(asctime)s]{RESET} "
                     f"{COLOR_CODES['cyan']}[%(name)s]{RESET} "
-                    "%(log_color)s[%(levelname)s]\033[0m "
+                    "%(log_color)s[%(levelname)s] "
                     "%(message)s"
                 ),
                 log_colors={
@@ -109,12 +160,12 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
 
 def color_text(text: str, color: str, bold: bool = False, dim: bool = False):
     if COLOR_SUPPORT and color in COLOR_CODES:
-        style = ""
+        style = COLOR_CODES[color]
         if bold:
             style += BOLD
         if dim:
             style += DIM
-        return f"{style}{COLOR_CODES[color]}{text}{RESET}"
+        return f"{COLOR_BEGIN_MARKER}{RESET}{style}{text}{COLOR_END_MARKER}"
     return text
 
 '''
@@ -124,10 +175,17 @@ logger.debug(f"Debug info: {color_text('temp_var = 42', 'magenta')}")
 '''
 if __name__ == "__main__":
     logger = setup_logger("Test", log_file=None, level=logging.DEBUG)
-    logger.debug("This is a debug message.")
-    logger.info("This is an info message.")
-    logger.warning("This is a warning.")
-    logger.error("This is an error.")
-    logger.critical("This is critical.")
-    logger.info(f"{color_text('[SUCCESS]', 'magenta')} File processed.")
-    logger.warning(f"{color_text('Caution:', 'cyan', bold=True, dim=True)} Low disk space.")
+    # logger.debug("This is a debug message.")
+    # logger.info("This is an info message.")
+    # logger.warning("This is a warning.")
+    # logger.error("This is an error.")
+    # logger.critical("This is critical.")
+
+    # green_text = color_text('[This is the yellow text]', 'yellow', dim=True)
+    
+    # logger.info(f"{color_text(green_text + '[SUCCESS]', 'magenta')} File processed.")
+    # logger.warning(f"{color_text('Caution:', 'cyan', bold=True, dim=True)} Low disk space.")
+
+    dim_yellow_text = color_text('[yellow]', 'yellow', dim=True, bold=False)
+    blue_text = color_text(f'[magenta_start] {dim_yellow_text} [magenta_end]', 'magenta', bold=True)
+    logger.debug(f"start {blue_text} end")

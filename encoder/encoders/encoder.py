@@ -454,7 +454,7 @@ class CRFEncoder(ABC):
             return EncodingStatus.FAILED
 
     @staticmethod
-    def human_readable_size(size_in_bytes:int):
+    def human_readable_size(size_in_bytes:int) -> str:
         """
         Converts a file size in bytes to a human-readable format.
 
