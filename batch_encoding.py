@@ -358,6 +358,7 @@ class BatchEncoder:
 
 
             elif status == EncodingStatus.SKIPPED:
+                log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
                 self.skipped_videos[media_file.file_path] = log
 
             elif status == EncodingStatus.FAILED: # the encoded file will be automatically removed
