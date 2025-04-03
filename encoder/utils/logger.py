@@ -62,11 +62,17 @@ COLOR_CODES = {
 COLOR_SUPPORT = terminal_supports_color()
 COLOR_END_MARKER = "[[COLOR_END]]"
 COLOR_BEGIN_MARKER = "[[COLOR_BEGIN]]"
+COLOR_RE = re.compile(r'(\033\[\d{1,2}m|\[\[COLOR_BEGIN\]\]|\[\[COLOR_END\]\])')
+
+class ClearColorFormatter(logging.Formatter):
+
+    def format(self, record):
+        msg = super().format(record)
+        clean_message = COLOR_RE.sub('', msg)
+        return clean_message
 
 class SmartColorFormatter(ColoredFormatter):
     
-    COLOR_RE = re.compile(r'(\033\[\d{1,2}m|\[\[COLOR_BEGIN\]\]|\[\[COLOR_END\]\])')
-
     def format(self, record):
         msg = super().format(record)
         return self._process_color_stack(msg)
@@ -124,7 +130,7 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
             os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
             # File handler (no color)
-            file_format = logging.Formatter(
+            file_format = ClearColorFormatter(
                 "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
             )
             file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')

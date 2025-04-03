@@ -224,12 +224,14 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 pbar.close()  # Close tqdm progress bar
 
             if process.returncode == 0:
-                status = self.clean_up()
                 self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
-                return status
+                return EncodingStatus.SUCCESS
             else:
-                self.logger.debug(f"❌ Encoding failed: FFmpeg returned {process.returncode}")
-                return EncodingStatus.FAILED
+                raise subprocess.CalledProcessError(
+                    returncode=process.returncode,
+                    cmd=ffmpeg_cmd,
+                    output=process.stdout.read()  # You could attach `process.stdout.read()` if you want more info
+                )
 
         def _get_filename_suffix(self) -> str:
             """
