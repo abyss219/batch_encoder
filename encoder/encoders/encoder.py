@@ -393,13 +393,6 @@ class CRFEncoder(ABC):
         elif status == EncodingStatus.FAILED: # encoding has failed
             self._delete_encoded()
 
-        # logging
-        if status == EncodingStatus.SUCCESS:
-            # check size reduction
-            encoded_size = os.path.getsize(self.output_tmp_file)
-            original_size = os.path.getsize(self.media_file.file_path)
-            size_reduction = 100 * (1 - (encoded_size / original_size))
-            self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
         return status
 
@@ -449,7 +442,11 @@ class CRFEncoder(ABC):
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
             ret_state = self._encode()
             if ret_state == EncodingStatus.SUCCESS:
-                pass
+                # check size reduction
+                encoded_size = os.path.getsize(self.output_tmp_file)
+                original_size = os.path.getsize(self.media_file.file_path)
+                size_reduction = 100 * (1 - (encoded_size / original_size))
+                self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
             elif ret_state == EncodingStatus.SKIPPED:
                 self.logger.warning(f"⚠️ Skipping encoding: {color_text(self.media_file.file_path, dim=True)} (Already in desired format).")
