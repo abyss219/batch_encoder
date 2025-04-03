@@ -116,7 +116,6 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
                 # Modify the command by inserting denoise and progress args before the output file
                 cmd = cmd[:-1] + pipeline_args + cmd[-1:]
-                self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(cmd), 'reset', dim=True)}")
             return cmd
 
         def get_duration(self) -> Optional[float]:
@@ -171,7 +170,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             ffmpeg_cmd = self.prepare_cmd()
             if not ffmpeg_cmd:
                 return EncodingStatus.SKIPPED
-            
+            self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
             # Get video duration

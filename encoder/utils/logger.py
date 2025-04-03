@@ -168,12 +168,25 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
 def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
     if not isinstance(text, str):
         text = str(text)
-        
+    if color is None and not bold and not dim:
+        return text
+    
+    style = ""
     if COLOR_SUPPORT and color in COLOR_CODES:
         style = RESET + (COLOR_CODES[color] if color != 'reset' else "")
-        if bold:
-            style += BOLD
-        if dim:
-            style += DIM
-        return f"{COLOR_BEGIN_MARKER}{style}{text}{COLOR_END_MARKER}"
-    return text
+
+    if bold:
+        style += BOLD
+    if dim:
+        style += DIM
+
+    return f"{COLOR_BEGIN_MARKER}{style}{text}{COLOR_END_MARKER}"
+
+if __name__ == "__main__":
+    logger = setup_logger("Test")
+    logger.info(
+        f"🎥 Encoding {color_text("fielname", dim=True)} of size "
+        f"{color_text("original_size", 'magenta')}, "
+        f"{color_text("left", 'magenta')}/{color_text("total", 'magenta')} "
+        f"videos has been processed"
+    )

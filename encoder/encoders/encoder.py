@@ -210,7 +210,6 @@ class CRFEncoder(ABC):
                 "-movflags", "+faststart",
                 self.output_tmp_file
                  ]
-        self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(cmd), 'reset', dim=True)}")
         return cmd
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
@@ -378,15 +377,14 @@ class CRFEncoder(ABC):
             if self.verify:
                 status = self._verify()
                 if status == EncodingStatus.LOWQUALITY:
-                    self.logger.warning(f"⚠️ The encoded media does not reach VMAF score threshold of {self.delete_threshold}. "
-                                        "The original media will not be replaced.")
+                    self.logger.warning(f"⚠️ The encoded media does not reach VMAF score threshold of {self.delete_threshold}.")
                     replace_file = False
                 elif status == EncodingStatus.FAILED:
                     replace_file = False
 
             if self.check_size and status == EncodingStatus.SUCCESS:
                 if os.path.getsize(self.output_tmp_file) >= os.path.getsize(self.media_file.file_path):
-                    self.logger.warning("⚠️ The encoded video has a larger size than the original. The original file will not be replaced.")
+                    self.logger.warning("⚠️ The encoded video has a larger size than the original.")
                     replace_file = False
                     status = EncodingStatus.LARGESIZE
 
@@ -394,6 +392,14 @@ class CRFEncoder(ABC):
                 status = self._replace_original()
         elif status == EncodingStatus.FAILED: # encoding has failed
             self._delete_encoded()
+
+        # logging
+        if status == EncodingStatus.SUCCESS:
+            # check size reduction
+            encoded_size = os.path.getsize(self.output_tmp_file)
+            original_size = os.path.getsize(self.media_file.file_path)
+            size_reduction = 100 * (1 - (encoded_size / original_size))
+            self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
 
         return status
 
@@ -415,6 +421,7 @@ class CRFEncoder(ABC):
 
         if not ffmpeg_cmd:
             return EncodingStatus.SKIPPED
+        self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
 
         subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
         
@@ -442,11 +449,8 @@ class CRFEncoder(ABC):
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
             ret_state = self._encode()
             if ret_state == EncodingStatus.SUCCESS:
-                # check size reduction
-                encoded_size = os.path.getsize(self.output_tmp_file)
-                original_size = os.path.getsize(self.media_file.file_path)
-                size_reduction = 100 * (1 - (encoded_size / original_size))
-                self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+                pass
+
             elif ret_state == EncodingStatus.SKIPPED:
                 self.logger.warning(f"⚠️ Skipping encoding: {color_text(self.media_file.file_path, dim=True)} (Already in desired format).")
         except subprocess.CalledProcessError as e:
