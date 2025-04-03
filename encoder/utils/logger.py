@@ -82,7 +82,7 @@ class SmartColorFormatter(ColoredFormatter):
         color_stack = []
         output = ""
 
-        tokens = self.COLOR_RE.split(msg)
+        tokens = COLOR_RE.split(msg)
         n = len(tokens)
         i = 0
 
