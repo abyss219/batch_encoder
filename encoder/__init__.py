@@ -10,10 +10,10 @@ def check_ffmpeg_installed() -> bool:
     """
     try:
         # Check if FFmpeg is available
-        result = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True, encoding='utf-8')
+        result = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, encoding='utf-8')
         
         # Check for codec support
-        codec_result = subprocess.run(["ffmpeg", "-codecs"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True, encoding='utf-8')
+        codec_result = subprocess.run(["ffmpeg", "-codecs"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, encoding='utf-8')
         codec_output = codec_result.stdout.lower()
         
         # Required codecs
@@ -41,7 +41,7 @@ def is_ffprobe_available() -> bool:
         subprocess.run(["ffprobe", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, encoding='utf-8')
         
         # Check for VMAF filter support
-        filter_result = subprocess.run(["ffmpeg", "-filters"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True, encoding='utf-8')
+        filter_result = subprocess.run(["ffmpeg", "-filters"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, encoding='utf-8')
         filter_output = filter_result.stdout.lower()
         
         if "libvmaf" in filter_output:

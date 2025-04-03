@@ -350,7 +350,7 @@ class BatchEncoder:
                 
             status = encoder.encode_wrapper()
             
-            if status == EncodingStatus.SUCCESS or status == EncodingStatus.LOWQUALITY:
+            if status == EncodingStatus.SUCCESS:
                 encoded_size = os.path.getsize(encoder.new_file_path)
                 self.logger.debug(encoder.new_file_path)
 
@@ -374,23 +374,31 @@ class BatchEncoder:
                 self.skipped_videos[media_file.file_path] = log
                 self.logger.info(log)
 
-            elif status == EncodingStatus.FAILED:
+            elif status == EncodingStatus.FAILED: # the encoded file will be automatically removed
                 self.failed_encodings.add(media_file.file_path)
                 self.logger.warning(f"❌ Encoding failed for {media_file.file_path}.")
+            elif status == EncodingStatus.LOWQUALITY:
+                log = f"❌ Encoding skipped for {media_file.file_path} due to low quality. The encoded video has been deleted."
+                self.logger.warning(log)
+                encoder._delete_encoded()
+                pass
             elif status == EncodingStatus.LARGESIZE:
-                self.skipped_videos[media_file.file_path] = log
-                size_log = ""
+                size_log = "(Unknown size change)"
                 if os.path.isfile(encoder.output_tmp_file):
                     encoded_size = os.path.getsize(encoder.output_tmp_file)
-                    size_log = color_text(
+                    size_log = (
                         CustomEncoding.human_readable_size(original_size) +
                         " → " +
                         CustomEncoding.human_readable_size(encoded_size),
-                        'cyan', bold=True
+                        'cyan'
                     )
-                    os.remove(encoder.output_tmp_file)
-                    
+                    encoder._delete_encoded()
+                
+                log = f"❌ Encoding skipped for {media_file.file_path} due to large size {size_log}. The encoded video has been deleted."
+                self.skipped_videos[media_file.file_path] = log
+                size_log = color_text(size_log)
                 log = f"❌ Encoding skipped for {color_text(media_file.file_path, dim=True)} due to large size {size_log}. The encoded video has been deleted."
+                
                 self.logger.warning(log)
             
             self.save_state()  # Save state in case of failure

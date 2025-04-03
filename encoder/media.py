@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass, asdict
 import os, sys
 
+
 @dataclass(frozen=True)
 class VideoStream:
     """
@@ -151,7 +152,6 @@ class MediaFile:
             result = subprocess.run(cmd,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
-                                    text=True,
                                     encoding='utf-8')
 
             # Check if FFmpeg execution failed
@@ -208,7 +208,7 @@ class MediaFile:
 
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
+            result = subprocess.run(cmd, capture_output=True, check=True, encoding='utf-8')
             info = json.loads(result.stdout)
             video_streams = []
             
@@ -299,7 +299,7 @@ class MediaFile:
         ]
         index_counter = 0 # FFmpeg assigns 0-based indexes to audio streams
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
+            result = subprocess.run(cmd, capture_output=True, check=True, encoding='utf-8')
             info = json.loads(result.stdout)
             audio_streams = []
             

@@ -210,7 +210,7 @@ class CRFEncoder(ABC):
                 "-movflags", "+faststart",
                 self.output_tmp_file
                  ]
-        
+        self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(cmd), 'reset', dim=True)}")
         return cmd
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
@@ -287,7 +287,7 @@ class CRFEncoder(ABC):
         self.logger.debug(f"🎵 Prepared audio arguments: {audio_args.values()}")
         return audio_args
 
-    def _verify(self):
+    def _verify(self) -> EncodingStatus:
         """
         Verifies the quality of the encoded video using VMAF.
 
@@ -301,7 +301,7 @@ class CRFEncoder(ABC):
         4. If the encoded file is corrupt or VMAF is too low, the original file is retained.
 
         Returns:
-            EncodingStatus: SUCCESS if the verification passes, FAILED otherwise.
+            EncodingStatus: SUCCESS if the verification passes, LOWQUALITY is quality threshold is not met, FAILED otherwise.
         """
         if self.verify:
             self.logger.info("🔍 Verifying encoded file integrity with VMAF...")
@@ -309,19 +309,23 @@ class CRFEncoder(ABC):
                 tmp_media = MediaFile(self.output_tmp_file)
             except ValueError:
                 self.logger.warning("⚠️ The encoded media is corrupted. The original media will not be deleted.")
-                self.new_file_path = self.output_tmp_file
                 return EncodingStatus.FAILED
             else:
                 vmaf_score = self.media_file.compare(tmp_media)
                 if vmaf_score is not None:
                     self.logger.info(f"✅ VMAF Score: {vmaf_score:.2f}")
+                    if vmaf_score < self.delete_threshold:
+                        return EncodingStatus.LOWQUALITY
                 else:
                     self.logger.warning("⚠️ VMAF comparison failed. The original file will not be deleted.")
-                    self.new_file_path = self.output_tmp_file
                     return EncodingStatus.FAILED
         return EncodingStatus.SUCCESS
 
-    def _replace_original(self):
+    def _delete_encoded(self):
+        if os.path.isfile(self.output_tmp_file):
+            os.remove(self.output_tmp_file)
+
+    def _replace_original(self) -> EncodingStatus:
         """
         Replaces the original file with the newly encoded video.
 
@@ -334,15 +338,22 @@ class CRFEncoder(ABC):
         """
         try:
             self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
-            os.remove(self.media_file.file_path)
-            os.rename(self.output_tmp_file, self.new_file_path)
+            if os.path.isfile(self.media_file.file_path):
+                os.remove(self.media_file.file_path)
+                if os.path.isfile(self.output_tmp_file) and not os.path.isfile(self.new_file_path):
+                    os.rename(self.output_tmp_file, self.new_file_path)
+                else:
+                    self.logger.error(f"❌ Failed to rename encoded file {self.output_tmp_file} into {self.new_file_path}. Encoded file has been deleted.")
+                    return EncodingStatus.FAILED
+            else:
+                self.logger.error(f"❌ Failed to delete original file {self.media_file.file_path}. Encoded file and original file will not be deleted.")
             self.logger.debug(f"📁 Successfully replaced {color_text(self.media_file.file_name, dim=True)} with {color_text(os.path.basename(self.new_file_path), dim=True)}")
         except OSError as e:
             self.logger.error(f"❌ Failed to delete original file: {e}")
             return EncodingStatus.FAILED
         return EncodingStatus.SUCCESS
 
-    def clean_up(self):
+    def clean_up(self, status:EncodingStatus):
         """
         Performs post-encoding cleanup.
 
@@ -361,18 +372,29 @@ class CRFEncoder(ABC):
         """
         self.logger.info("🔄 Cleaning up...")
         
-        status = EncodingStatus.SUCCESS
-        if self.verify:
-            status = self._verify()
-        
-        if self.check_size:
-            if os.path.getsize(self.output_tmp_file) >= os.path.getsize(self.media_file.file_path):
-                self.logger.warning("⚠️ The encoded video has a larger size than the original. The original file will not be deleted.")
-                return EncodingStatus.LARGESIZE
+        replace_file = self.delete_original
 
-        if self.delete_original:
-            status = self._replace_original()
-        
+        if status == EncodingStatus.SUCCESS:
+            if self.verify:
+                status = self._verify()
+                if status == EncodingStatus.LOWQUALITY:
+                    self.logger.warning(f"⚠️ The encoded media does not reach VMAF score threshold of {self.delete_threshold}. "
+                                        "The original media will not be replaced.")
+                    replace_file = False
+                elif status == EncodingStatus.FAILED:
+                    replace_file = False
+
+            if self.check_size and status == EncodingStatus.SUCCESS:
+                if os.path.getsize(self.output_tmp_file) >= os.path.getsize(self.media_file.file_path):
+                    self.logger.warning("⚠️ The encoded video has a larger size than the original. The original file will not be replaced.")
+                    replace_file = False
+                    status = EncodingStatus.LARGESIZE
+
+            if replace_file and status == EncodingStatus.SUCCESS:
+                status = self._replace_original()
+        elif status == EncodingStatus.FAILED: # encoding has failed
+            self._delete_encoded()
+
         return status
 
     def _encode(self) -> EncodingStatus:
@@ -385,31 +407,18 @@ class CRFEncoder(ABC):
         Steps:
         1. Calls `prepare_cmd()` to generate the FFmpeg command.
         2. Runs the FFmpeg command to encode the video.
-        3. Logs encoding progress and completion details.
-        4. Calls `clean_up()` to finalize the process (quality verification, deletion, or file replacement).
 
         Returns:
-            EncodingStatus: The status of encoding (SUCCESS, FAILED, SKIPPED, etc.).
+            EncodingStatus: The status of encoding (SUCCESS, SKIPPED).
         """
         ffmpeg_cmd = self.prepare_cmd()
-        self.logger.info(f"🚀 Final ffmpeg arg: {" ".join(ffmpeg_cmd)}")
 
         if not ffmpeg_cmd:
-            self.logger.warning(f"⚠️ Skipping encoding: {self.media_file.file_path} (Already in desired format).")
             return EncodingStatus.SKIPPED
 
-        self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
-        result = subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
-
-        # check size reduction
-        encoded_size = os.path.getsize(self.output_tmp_file)
-        original_size = os.path.getsize(self.media_file.file_path)
-        size_reduction = 100 * (1 - (encoded_size / original_size))
-        self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+        subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
         
-        status = EncodingStatus.SUCCESS
-        status = self.clean_up()
-        return status
+        return EncodingStatus.SUCCESS
 
     def encode_wrapper(self) -> EncodingStatus:
         """
@@ -423,35 +432,44 @@ class CRFEncoder(ABC):
         1. Calls `_encode()` to perform the encoding.
         2. If encoding is successful, logs success.
         3. Handles FFmpeg errors, missing files, or user interruptions.
-        4. Cleans up temporary files if encoding fails.
+        4. Calls `clean_up()` to finalize the process (quality verification, deletion, or file replacement).
 
         Returns:
             EncodingStatus: The final encoding status (SUCCESS, FAILED, SKIPPED, etc.).
         """
+        ret_state = EncodingStatus.FAILED
         try:
-            ret = self._encode()
-            self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
-            return ret
+            self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
+            ret_state = self._encode()
+            if ret_state == EncodingStatus.SUCCESS:
+                # check size reduction
+                encoded_size = os.path.getsize(self.output_tmp_file)
+                original_size = os.path.getsize(self.media_file.file_path)
+                size_reduction = 100 * (1 - (encoded_size / original_size))
+                self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+            elif ret_state == EncodingStatus.SKIPPED:
+                self.logger.warning(f"⚠️ Skipping encoding: {color_text(self.media_file.file_path, dim=True)} (Already in desired format).")
         except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.decode() if e.stderr else "Unknown FFmpeg error"
-            self.logger.error(f"❌ Encoding failed for {self.media_file.file_path}: {error_msg}")
-            if os.path.isfile(self.output_tmp_file):
-                os.remove(self.output_tmp_file)
-            return EncodingStatus.FAILED
-
-        except FileNotFoundError:
-            self.logger.error(f"❌ FFmpeg not found. Make sure it is installed and accessible.")
-            return EncodingStatus.FAILED
-
+            error_msg = f"❌ Encoding failed for {self.media_file.file_path}:\n"
+            if e.stderr:
+                error_msg += f"Stderr: {color_text(e.stderr.decode(), color='reset', dim=True)}\n"
+            if e.stdout:
+                error_msg += f"Stdout: {color_text(e.stderr.decode(), color='reset', dim=True)}\n"
+            
+            error_msg += f"Return code: {color_text(e.returncode, bold=True)}"
+            self.logger.error(error_msg)
+            ret_state = EncodingStatus.FAILED
         except KeyboardInterrupt:
             self.logger.warning(f"🔴 Encoding interrupted manually (Ctrl+C). Cleaning up temp files {self.output_tmp_file}...")
-            if os.path.isfile(self.output_tmp_file):
-                os.remove(self.output_tmp_file)
+            self._delete_encoded()
             sys.exit(1)
             return EncodingStatus.FAILED
         except Exception as e:
             self.logger.exception(e)
-            return EncodingStatus.FAILED
+            ret_state = EncodingStatus.FAILED
+        
+        ret_state = self.clean_up(ret_state)
+        return ret_state
 
     @staticmethod
     def human_readable_size(size_in_bytes:int) -> str:
