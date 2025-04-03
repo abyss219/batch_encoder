@@ -408,7 +408,7 @@ class BatchEncoder:
             "📉 Final average size reduction: "
             f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')}.\n"
             "💾 Total disk space saved: "
-            f"{color_text(CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}. "
+            f"{color_text(CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}.\n"
             "⌛ Time taken current pass: "
             f"{color_text(self.format_time(total_time_seconds), 'blue', bold=True)}"
         )
@@ -542,7 +542,7 @@ class BatchEncoder:
                 f"⏭️ Skipped: {color_text(str(len(self.skipped_videos)), 'yellow', bold=True)} videos:"
             )
             for file_path, reason in self.skipped_videos.items():
-                self.logger.info(f"  - {file_path} | Reason: {color_text(reason, 'reset', dim=True)}")
+                self.logger.info(f"  - {color_text(file_path, dim=True)} | Reason: {color_text(reason, 'reset', dim=True)}")
         else:
             self.logger.info(color_text("⏭️ No videos were skipped.",))
 
