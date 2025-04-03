@@ -250,7 +250,7 @@ class CRFEncoder(ABC):
             video_args[video_stream] = sub_args
         
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
-        self.logger.info(f'🔹 {self.__class__.__name__} encoding initialized for "{self.media_file.file_name}" | CRF: {", ".join(crf_log)}')
+        self.logger.info(f'🔹 {self.__class__.__name__} encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | CRF: {", ".join(crf_log)}')
         return video_args
 
     def prepare_audio_args(self) -> Dict[AudioStream, List[str]]:

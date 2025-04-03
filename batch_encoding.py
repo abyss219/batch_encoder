@@ -335,7 +335,7 @@ class BatchEncoder:
             self.logger.info(
                 f"🎥 Encoding {color_text(media_file.file_name, dim=True)} of size "
                 f"{color_text(CustomEncoding.human_readable_size(original_size), 'magenta')}, "
-                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')}/{self.initial_queue_size} "
+                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')}/{color_text(self.initial_queue_size, 'magenta')} "
                 f"videos has been processed"
             )
 
