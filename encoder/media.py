@@ -89,7 +89,7 @@ class AudioStream:
     bit_rate: Optional[int]
     sample_rate: Optional[int]
 
-    def map_prefix(self, new_index:int):
+    def map_prefix(self, new_index:int, codec:bool='copy'):
         """
         Generates FFmpeg mapping arguments for the audio stream.
         
@@ -99,7 +99,12 @@ class AudioStream:
         Returns:
             List[str]: FFmpeg command arguments for mapping the audio stream.
         """
-        return ["-map", f"0:a:{self.ffmpeg_index}", f"-c:a:{new_index}"]
+        prefix = ["-map", f"0:a:{self.ffmpeg_index}", f"-c:a:{new_index}"]
+        if codec != 'copy':
+            prefix.extend[codec, f"-b:a:{new_index}"]
+        return prefix
+    
+    
 
 class MediaFile:
     """
