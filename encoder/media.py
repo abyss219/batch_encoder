@@ -101,7 +101,7 @@ class AudioStream:
         """
         prefix = ["-map", f"0:a:{self.ffmpeg_index}", f"-c:a:{new_index}"]
         if codec != 'copy':
-            prefix.extend[codec, f"-b:a:{new_index}"]
+            prefix.extend([codec, f"-b:a:{new_index}"])
         return prefix
     
     
