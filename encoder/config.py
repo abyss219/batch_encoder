@@ -20,9 +20,6 @@ DEFAULT_RESOLUTION_TOLERANCE = 0.05 # Allows minor differences in resolution bef
 DEFAULT_RESOLUTION = '1080p' # Default resolution to assume if video resolution is unknown.
 DEFAULT_FRAME_RATE = 30 # Default frame rate used when a video's frame rate is not available (used in key frame calculations).
 
-# Audio Encoding Defaults
-DEFAULT_AUDIO_BIT_RATE = "128k" # Default bitrate for encoding audio streams when no specific bitrate is provided.
-
 # SVT-AV1 Specific Defaults
 DEFAULT_SVTAV1_TUNE = 0 # Default tuning mode for SVT-AV1 (0 = sharpness [VA], 1 = PSNR optimization, 2 = SSIM).
 DEFAULT_SVTAV1_FAST_DECODE = 1 # Default fast decode setting (0-2), 0 means off, reducing CPU load at the cost of compression efficiency.
