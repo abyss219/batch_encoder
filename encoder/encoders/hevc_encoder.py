@@ -94,7 +94,7 @@ class HevcEncoder(PresetCRFEncoder):
                 else:
                     # Otherwise, encode using HEVC with preset and CRF settings
                     sub_args.extend(["copy"])
-                    self.logger.warning(f"⚠️ Skipping encoding for stream {video_stream.index}: {self.media_file.file_path} is already in the desired format.")
+                    self.logger.warning(f"⚠️ Skipping encoding for stream {video_stream.index}: {color_text(self.media_file.file_path, dim=True)} is already in the desired format.")
                 counter += 1
                 preset_log.append("copy")
                 crf_log.append("copy")

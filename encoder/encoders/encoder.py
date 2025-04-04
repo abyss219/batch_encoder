@@ -446,7 +446,11 @@ class CRFEncoder(ABC):
                 encoded_size = os.path.getsize(self.output_tmp_file)
                 original_size = os.path.getsize(self.media_file.file_path)
                 size_reduction = 100 * (1 - (encoded_size / original_size))
-                self.logger.info(f"✅ Encoding completed: {self.media_file.file_name} ({self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}, Reduction: {size_reduction:.2f}%)")
+                self.logger.info(
+                    f"✅ Encoding completed: {color_text(self.media_file.file_name, dim=True)} "
+                    f"({color_text(f'{self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}', 'cyan', bold=True)}, "
+                    f"Reduction: {color_text(f'{size_reduction:.2f}%', 'magenta')})"
+                )
 
             elif ret_state == EncodingStatus.SKIPPED:
                 self.logger.warning(f"⚠️ Skipping encoding: {color_text(self.media_file.file_path, dim=True)} (Already in desired format).")

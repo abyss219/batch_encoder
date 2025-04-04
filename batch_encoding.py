@@ -225,8 +225,7 @@ class BatchEncoder:
         self.failed_encodings = set()  # Stores videos that failed encoding
         self.skipped_videos = {}  # Stores videos that were skipped and their reason
 
-        self.encoded_video_count = 0
-        self.total_original_size = 0
+        self.total_original_size = 0 # for encoded videos only
         self.total_encoded_size = 0
 
         # Set up the logger
@@ -355,6 +354,9 @@ class BatchEncoder:
                 self.logger.debug(encoder.new_file_path)
 
                 self.success_encodings.add(media_file.file_path)
+                if os.path.isfile(media_file.file_path):
+                    self.total_encoded_size += os.path.getsize(media_file.file_path)
+                    self.total_original_size += original_size
 
 
             elif status == EncodingStatus.SKIPPED:
@@ -387,7 +389,7 @@ class BatchEncoder:
             self.save_state()  # Save state in case of failure
         
         # Calculate final average reduction
-        if self.encoded_video_count > 0:
+        if len(self.success_encodings) > 0 and self.total_original_size > 0:
             final_avg_reduction = 100 * (1 - (self.total_encoded_size / self.total_original_size))
         else:
             final_avg_reduction = 0
@@ -427,7 +429,6 @@ class BatchEncoder:
             "video_queue": self.video_queue,
             "min_size": self.min_size,
             "min_resolution": self.min_resolution,
-            'encoded_video_count' : self.encoded_video_count,
             'total_original_size' : self.total_original_size,
             'total_encoded_size' : self.total_encoded_size
         }
@@ -454,15 +455,11 @@ class BatchEncoder:
                     min_size = state.get("min_size", DEFAULT_MIN_SIZE)
                     min_resolution = state.get('min_resolution', None)
 
-                    self.encoded_video_count = state.get("encoded_video_count", 0)
                     self.total_original_size = state.get("total_original_size", 0)
                     self.total_encoded_size = state.get("total_encoded_size", 0)
 
-                    if len(self.video_queue) <= 0:
-                        if self.encoded_video_count > 0:
-                            self.logger.info(f"Previous encoding session has finished. Restarting for {self.directory}.")
-                        else:
-                            self.logger.info(f"Previous encoding hasn't started. Restarting for {self.directory}.")
+                    if len(self.video_queue) < 1:
+                        self.logger.info(f"Previous encoding has finished or hasn't started. Restarting for {self.directory}.")
                         return False
                     elif min_size != self.min_size or min_resolution != self.min_resolution:
                         self.logger.info("Current encoding session has different parameters than saved encoding session. "
@@ -488,7 +485,6 @@ class BatchEncoder:
         self.skipped_videos.clear()
         self.video_queue.clear()
 
-        self.encoded_video_count = 0
         self.total_original_size = 0
         self.total_encoded_size = 0
 
