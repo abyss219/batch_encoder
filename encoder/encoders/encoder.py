@@ -278,7 +278,7 @@ class CRFEncoder(ABC):
                 sub_arg.extend(audio_stream.map_prefix(index, 'copy'))
                 sub_arg.extend(["copy"])
             else:
-                sub_arg.extend(audio_stream.map_prefix('aac'))
+                sub_arg.extend(audio_stream.map_prefix(index, 'aac'))
                 target_bitrate = f"{audio_stream.bit_rate}k" if audio_stream.bit_rate else DEFAULT_AUDIO_BIT_RATE
                 sub_arg.extend([target_bitrate])
                 # ffmpeg preserves sample rate by default
