@@ -377,14 +377,13 @@ class BatchEncoder:
                     size_log = (
                         CustomEncoding.human_readable_size(original_size) +
                         " → " +
-                        CustomEncoding.human_readable_size(encoded_size),
-                        'cyan'
+                        CustomEncoding.human_readable_size(encoded_size)
                     )
                     encoder._delete_encoded()
                 
-                log = f"❌ Encoding skipped for {media_file.file_path} due to large size {size_log}. The encoded video has been deleted."
+                log = f"❌ Encoding skipped for {media_file.file_path} due to large size {color_text(size_log, 'magenta')}. The encoded video has been deleted."
                 self.skipped_videos[media_file.file_path] = log
-                self.logger.warning(f"❌ The encoded video {color_text(media_file.file_name, dim=True)} has been deleted: {color_text(size_log, 'magenta')}.")
+                self.logger.warning(log)
                             
             self.save_state()  # Save state in case of failure
         
@@ -400,7 +399,7 @@ class BatchEncoder:
 
         self.logger.info(
             color_text("\n" + "-" * 50 + "\n", dim=True) +
-            "📊 All tasks finished.\n"
+            f"📊 All tasks finished for directory {color_text(self.directory, 'cyan')}\n"
             "✅ Successful: "
             f"{color_text(str(len(self.success_encodings)), 'cyan', bold=True)}, "
             "❌ Failed: "
