@@ -123,10 +123,16 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             Retrieves the duration of the video file in seconds.
 
             Returns:
-                Optional[float]: The total duration of the video file.
+                Optional[float]: The total duration of the video file. 
+                If duration is None or 0, the function returns None.
             """
             duration = self.media_file.video_info[0].duration
-            return float(duration) if duration else None
+            if duration:
+                duration = float(duration)
+                if duration == 0:
+                    return None
+                return duration
+            return None
             
         def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
             """
@@ -155,7 +161,6 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             return video_args
 
 
-
         def _encode(self) -> EncodingStatus:
             """
             Performs the encoding process with real-time progress tracking.
@@ -173,64 +178,84 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
+            
             # Get video duration
             duration = self.get_duration()
-            pbar = tqdm(
-                total=round(duration, 2),  # Total duration of the video
-                unit="s",  # Unit is seconds since we're tracking time
-                position=0,
-                leave=True,
-                dynamic_ncols=True,
-                bar_format="{l_bar}{bar} | {n:.2f}/{total:.2f}s [{elapsed}<{remaining}{postfix}]"
-            ) if duration else None
+            use_pbar = duration is not None
 
-            start_time = time.time()
-            
-            # Start FFmpeg encoding process
-            process = subprocess.Popen(
-                ffmpeg_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, # Suppress stderr output
-                text=True,
-                bufsize=1,  # Line-buffered
-                universal_newlines=True,
-                encoding='utf-8'
-            )
-
-            # Track encoding progress in real-time
-            for line in process.stdout:
-                self.logger.debug(f"FFmpeg: {line.strip()}")
-                match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
-                
-
-                if match and duration:
-                    hours, minutes, seconds = map(float, match.groups())
-                    elapsed_time = hours * 3600 + minutes * 60 + seconds
-                    if pbar:
-                        progress_update = max(0, elapsed_time - pbar.n)
-                        pbar.update(progress_update)
-
-                        # Compute Encoding Speed (n / elapsed_s)
-                        elapsed_real_time = time.time() - start_time
-                        encoding_speed = elapsed_time / elapsed_real_time if elapsed_real_time > 0 else 0
-
-                        # Update tqdm with correct speed
-                        pbar.set_postfix_str(f"{encoding_speed:.4f}x")
-                        # pbar.update(elapsed_time - pbar.n)  # Update tqdm progress
-
-            process.wait()  # Ensure FFmpeg process completes
-            if pbar:
-                pbar.close()  # Close tqdm progress bar
-
-            if process.returncode == 0:
-                self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
-                return EncodingStatus.SUCCESS
-            else:
-                raise subprocess.CalledProcessError(
-                    returncode=process.returncode,
-                    cmd=ffmpeg_cmd,
-                    output=process.stdout.read()  # You could attach `process.stdout.read()` if you want more info
+            if use_pbar:
+                self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
+                pbar = tqdm(
+                    total=round(duration, 2),  # Total duration of the video
+                    unit="s",  # Unit is seconds since we're tracking time
+                    position=0,
+                    leave=True,
+                    dynamic_ncols=True,
+                    bar_format="{l_bar}{bar} | {n:.2f}/{total:.2f}s [{elapsed}<{remaining}{postfix}]"
                 )
+
+                start_time = time.time()
+
+                # Start FFmpeg encoding process
+                process = subprocess.Popen(
+                    ffmpeg_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL, # Suppress stderr output
+                    bufsize=1,  # Line-buffered
+                    universal_newlines=True,
+                    encoding='utf-8'
+                )
+
+                # Track encoding progress in real-time
+                for line in process.stdout:
+                    if use_pbar:
+                        self.logger.debug(f"FFmpeg: {line.strip()}")
+                        match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
+
+                        if match and len(match.groups()) == 3:
+                            try:
+                                hours, minutes, seconds = map(float, match.groups())
+                            except ValueError as e:
+                                self.logger.warning(f"⚠️ Invalid time format in FFmpeg output: {match.groups()} ({e}). Progress bar disabled.")
+                                use_pbar = False # disable future tqdm
+                                pbar.close()
+                                pbar = None
+                                continue
+
+                            elapsed_time = hours * 3600 + minutes * 60 + seconds
+                            self.logger.debug(f"⏳ Encoded time: {elapsed_time:.2f}s")
+
+                            progress_update = max(0, elapsed_time - pbar.n)
+                            self.logger.debug(f"📈 Progress update: +{progress_update:.2f}s")
+                            pbar.update(progress_update)
+
+                            # Compute Encoding Speed (n / elapsed_s)
+                            elapsed_real_time = time.time() - start_time
+                            encoding_speed = elapsed_time / elapsed_real_time if elapsed_real_time > 0 else 0
+
+                            # Update tqdm with correct speed
+                            pbar.set_postfix_str(f"{encoding_speed:.4f}x")
+                            # pbar.update(elapsed_time - pbar.n)  # Update tqdm progress
+
+                process.wait()  # Ensure FFmpeg process completes
+                if use_pbar:
+                    pbar.close()  # Close tqdm progress bar
+
+                if process.returncode == 0:
+                    self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
+                    return EncodingStatus.SUCCESS
+                else:
+                    raise subprocess.CalledProcessError(
+                        returncode=process.returncode,
+                        cmd=ffmpeg_cmd                    )
+
+            else: # does not use pbar
+                subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
+
+            return EncodingStatus.SUCCESS
+            
+
+
 
         def _get_filename_suffix(self) -> str:
             """

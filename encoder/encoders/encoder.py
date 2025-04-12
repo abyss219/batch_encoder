@@ -323,9 +323,15 @@ class CRFEncoder(ABC):
                     return EncodingStatus.FAILED
         return EncodingStatus.SUCCESS
 
-    def _delete_encoded(self):
+    def _delete_encoded(self) -> bool:
         if os.path.isfile(self.output_tmp_file):
-            os.remove(self.output_tmp_file)
+            try:
+                os.remove(self.output_tmp_file)
+                self.logger.debug(f"🧹 Deleted temp file: {self.output_tmp_file}")
+            except PermissionError as e:
+                self.logger.warning(f"⚠️ Cannot delete '{self.output_tmp_file}': file is in use.")
+                return False
+        return True
 
     def _replace_original(self) -> EncodingStatus:
         """
@@ -394,8 +400,7 @@ class CRFEncoder(ABC):
             if replace_file and status == EncodingStatus.SUCCESS:
                 status = self._replace_original()
         elif status == EncodingStatus.FAILED: # encoding has failed
-            self._delete_encoded()
-
+            delete_success = self._delete_encoded()
 
         return status
 
