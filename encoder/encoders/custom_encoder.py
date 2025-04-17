@@ -175,7 +175,6 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             ffmpeg_cmd = self.prepare_cmd()
             if not ffmpeg_cmd:
                 return EncodingStatus.SKIPPED
-            self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
             
@@ -184,6 +183,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             use_pbar = duration is not None
 
             if use_pbar:
+                self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
                 self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
                 pbar = tqdm(
                     total=round(duration, 2),  # Total duration of the video
@@ -252,6 +252,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             else: # does not use pbar
                 self.logger.warning("⚠️ Progress is not availiable. Fallback to ffmpeg output.")
                 ffmpeg_cmd = [arg for arg in ffmpeg_cmd if arg not in ("-progress", "pipe:1")]
+                self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
                 subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
 
             return EncodingStatus.SUCCESS
