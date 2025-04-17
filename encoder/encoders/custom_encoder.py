@@ -251,7 +251,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
             else: # does not use pbar
                 self.logger.warning("⚠️ Progress is not availiable. Fallback to ffmpeg output.")
-                ffmpeg_cmd = [arg for arg in ffmpeg_cmd if arg not in ("-progress", "pipe:1")]
+                ffmpeg_cmd = [arg for arg in ffmpeg_cmd if arg not in ("-progress", "pipe:1", "-nostats")]
                 self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
                 subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
 
