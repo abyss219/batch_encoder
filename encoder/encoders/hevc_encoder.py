@@ -116,9 +116,11 @@ class HevcEncoder(PresetCRFEncoder):
 
         preset_log = []  # Logs the presets used
         crf_log = []  # Logs the CRF values used
+        resolution_log = []
 
-        counter = 0  # FFmpeg stream index counter
-        for video_stream in self.media_file.video_info:
+        for counter, video_stream in enumerate(self.media_file.video_info):
+            resolution_log.append(video_stream.get_readable_resolution_or_default())
+            
             sub_args = []
             if video_stream.codec in self.ignore_codec:
                 # If the codec is already HEVC, copy the stream instead of encoding
@@ -135,7 +137,6 @@ class HevcEncoder(PresetCRFEncoder):
                     self.logger.warning(
                         f"⚠️ Skipping encoding for stream {video_stream.index}: {color_text(self.media_file.file_path, dim=True)} is already in the desired format."
                     )
-                counter += 1
                 preset_log.append("copy")
                 crf_log.append("copy")
             else:
@@ -151,7 +152,6 @@ class HevcEncoder(PresetCRFEncoder):
                         self.get_crf(video_stream),
                     ]
                 )  # Apply CRF
-                counter += 1
 
                 # Log preset and CRF values
                 preset_log.append(self.get_preset(video_stream))
@@ -161,6 +161,6 @@ class HevcEncoder(PresetCRFEncoder):
 
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
         self.logger.info(
-            f'🔹 HEVC encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Preset: {color_text(", ".join(preset_log), 'cyan')} | CRF: {color_text(", ".join(crf_log), 'cyan')}'
+            f'🔹 HEVC encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Resolution: {color_text(", ".join(resolution_log), 'cyan')} | Preset: {color_text(", ".join(preset_log), 'cyan')} | CRF: {color_text(", ".join(crf_log), 'cyan')}'
         )
         return video_args

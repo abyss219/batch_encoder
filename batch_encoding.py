@@ -294,11 +294,11 @@ class BatchEncoder:
             self.log_file,
             logging.DEBUG if debug else logging.INFO,
         )
-        self.logger.info(f"Initializing BatchEncoder for directory: {directory}")
+        self.logger.debug(f"Initializing BatchEncoder for directory: {directory}")
 
         # Load previous state if applicable
         if not force_reset and self.load_state():
-            self.logger.info(f"Resuming previous encoding session for {directory}.")
+            self.logger.debug(f"Resuming previous encoding session for {directory}.")
         else:
             self.reset_state()
             self.prepare_video_queue()
@@ -391,7 +391,7 @@ class BatchEncoder:
 
         heapq.heapify(temp_queue)  # More efficient than pushing one by one
         self.video_queue = temp_queue
-        self.logger.info(f"Prepared {len(self.video_queue)} videos for encoding.")
+        self.logger.info(f"Prepared {color_text(len(self.video_queue), 'cyan', bold=True)} videos for encoding.")
 
     def encode_videos(self):
         """
@@ -404,8 +404,8 @@ class BatchEncoder:
             original_size = -neg_file_size
             self.logger.info(
                 f"🎥 Encoding {color_text(media_file.file_name, dim=True)} of size "
-                f"{color_text(CustomEncoding.human_readable_size(original_size), 'magenta')}, "
-                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')}/{color_text(self.initial_queue_size, 'magenta')} "
+                f"{color_text(CustomEncoding.human_readable_size(original_size), 'yellow')}, "
+                f"{color_text(self.initial_queue_size - len(self.video_queue), 'cyan')}/{color_text(self.initial_queue_size, 'magenta', bold=True)} "
                 f"videos has been processed"
             )
 
@@ -424,6 +424,7 @@ class BatchEncoder:
                 debug=self.debug,
             )
 
+            start_time = time.time()
             status = encoder.encode_wrapper()
 
             if status == EncodingStatus.SUCCESS:
@@ -464,6 +465,8 @@ class BatchEncoder:
                 log = f"❌ Encoding skipped for {media_file.file_path} due to large size {color_text(size_log, 'magenta')}. The encoded video has been deleted."
                 self.skipped_videos[media_file.file_path] = log
                 self.logger.warning(log)
+
+            self.logger.info(f"🕐 Encoding took {color_text(self.format_time(time.time()-start_time), 'magenta')}")
 
             self.save_state()  # Save state in case of failure
 
@@ -537,7 +540,7 @@ class BatchEncoder:
 
                     if len(self.video_queue) < 1:
                         self.logger.info(
-                            f"Previous encoding has finished or hasn't started. Restarting for {self.directory}."
+                            f"Previous encoding has finished or hasn't started. Restarting for {color_text(self.directory, dim=True)}."
                         )
                         return False
                     elif (
@@ -545,17 +548,18 @@ class BatchEncoder:
                         or min_resolution != self.min_resolution
                     ):
                         self.logger.info(
-                            "Current encoding session has different parameters than saved encoding session. "
-                            f"Got different values for min_size: {min_size}, previous {self.min_size} or min_resolution: {min_resolution}, previous {self.min_resolution}. "
-                            f"Restarting for {self.directory}."
+                            "Current encoding session has different parameters than saved encoding session.\n"
+                            f"  - min_size:       got {color_text(min_size, 'cyan', bold=True)}, passed {color_text(self.min_size, 'magenta')}\n"
+                            f"  - min_resolution: got {color_text(min_resolution, 'cyan', bold=True)}, passed {color_text(self.min_resolution, 'magenta')}\n"
+                            f"Restarting for: {color_text(self.directory, dim=True)}"
                         )
                         return False
 
-                    self.logger.info(f"Resumed encoding session for {self.directory}.")
+                    self.logger.info(f"Resumed encoding session for {color_text(self.directory, dim=True)}.")
                     return True
                 else:
                     self.logger.warning(
-                        f"Directory has changed from {state.get('directory')} to {self.directory}. Resetting state."
+                        f"Directory has changed from {color_text(state.get('directory'), 'cyan', dim=True)} to {color_text(self.directory, 'magenta', bold=True)}. Resetting state."
                     )
             except Exception as e:
                 self.logger.error(f"Failed to load state")
@@ -578,7 +582,7 @@ class BatchEncoder:
 
         self.save_state()  # Save the reset state
         open(self.log_file, "w").close()  # Clear file
-        self.logger.debug("Encoding state reset.")
+        self.logger.info("Encoding state reset.")
 
     @staticmethod
     def parse_size(size: Union[str, float]) -> int:

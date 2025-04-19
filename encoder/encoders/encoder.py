@@ -268,8 +268,12 @@ class CRFEncoder(ABC):
         video_args = {}
 
         crf_log = []
+        resolution_log = []
+        
 
         for counter, video_stream in enumerate(self.media_file.video_info):
+            resolution_log.append(video_stream.get_readable_resolution_or_default())
+
             sub_args = []
             sub_args.extend(video_stream.map_prefix(counter))
             if video_stream.codec in self.ignore_codec:
@@ -295,7 +299,7 @@ class CRFEncoder(ABC):
 
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
         self.logger.info(
-            f'🔹 {self.__class__.__name__} encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | CRF: {", ".join(crf_log)}'
+            f'🔹 {self.__class__.__name__} encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Resolution: {", ".join(resolution_log)} | CRF: {", ".join(crf_log)}'
         )
         return video_args
 

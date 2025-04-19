@@ -32,10 +32,10 @@ hevc:
   preset:
     4k: "slow"
     2k: "slow"
-    1080p: "medium"
-    720p: "medium"
-    480p: "fast"
-    360p: "fast"
+    1080p: "slow"
+    720p: "slow"
+    480p: "slow"
+    360p: "slow"
   crf:
     4k: 25
     2k: 24
