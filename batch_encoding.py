@@ -10,7 +10,7 @@ import time
 import logging
 from encoder import *
 from config import load_config, EncodingStatus, RESOLUTION
-from encoder.utils import setup_logger, color_text
+from utils import setup_logger, color_text
 from encoder.encoders.custom_encoder import get_custom_encoding_class
 
 config = load_config()
