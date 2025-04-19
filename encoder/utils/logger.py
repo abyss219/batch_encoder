@@ -7,10 +7,12 @@ import re
 
 try:
     import colorama
+
     colorama.just_fix_windows_console()
     HAS_COLORAMA = True
 except (AttributeError, ImportError, OSError):
     HAS_COLORAMA = False
+
 
 def terminal_supports_color():
     """
@@ -46,6 +48,7 @@ def terminal_supports_color():
         or windows_vt_codes_enabled()
     )
 
+
 # ANSI escape codes
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -57,22 +60,24 @@ COLOR_CODES = {
     "blue": "\033[34m",
     "magenta": "\033[35m",
     "cyan": "\033[36m",
-    "reset": RESET
+    "reset": RESET,
 }
 COLOR_SUPPORT = terminal_supports_color()
 COLOR_END_MARKER = "[[COLOR_END]]"
 COLOR_BEGIN_MARKER = "[[COLOR_BEGIN]]"
-COLOR_RE = re.compile(r'(\033\[\d{1,2}m|\[\[COLOR_BEGIN\]\]|\[\[COLOR_END\]\])')
+COLOR_RE = re.compile(r"(\033\[\d{1,2}m|\[\[COLOR_BEGIN\]\]|\[\[COLOR_END\]\])")
+
 
 class ClearColorFormatter(logging.Formatter):
 
     def format(self, record):
         msg = super().format(record)
-        clean_message = COLOR_RE.sub('', msg)
+        clean_message = COLOR_RE.sub("", msg)
         return clean_message
 
+
 class SmartColorFormatter(ColoredFormatter):
-    
+
     def format(self, record):
         msg = super().format(record)
         return self._process_color_stack(msg)
@@ -95,7 +100,7 @@ class SmartColorFormatter(ColoredFormatter):
             if not token:
                 continue
 
-            elif token.startswith('\033['):
+            elif token.startswith("\033["):
                 if token == DIM:
                     dim = True
                 elif token == BOLD:
@@ -112,12 +117,15 @@ class SmartColorFormatter(ColoredFormatter):
                 style = RESET + color + (DIM if dim else "") + (BOLD if bold else "")
                 output += style
 
-            else:                
+            else:
                 output += token
 
         return output
 
-def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", level=logging.INFO):
+
+def setup_logger(
+    log_name: str, log_file: Optional[str] = "logs/default.log", level=logging.INFO
+):
     """
     Sets up a logger with file and color-capable console output using colorlog.
     """
@@ -125,7 +133,7 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
     logger.setLevel(level)
 
     if not logger.hasHandlers():
-        
+
         if log_file:
             os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
@@ -133,8 +141,9 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
             file_format = ClearColorFormatter(
                 "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
             )
-            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
             file_handler.setFormatter(file_format)
+            file_handler.setLevel(logging.INFO)
             logger.addHandler(file_handler)
 
         # Console handler (with color if supported and colorlog is available)
@@ -148,32 +157,34 @@ def setup_logger(log_name: str, log_file: Optional[str] = "logs/default.log", le
                     "%(message)s"
                 ),
                 log_colors={
-                    'DEBUG': 'cyan',
-                    'INFO': 'green',
-                    'WARNING': 'yellow',
-                    'ERROR': 'red',
-                    'CRITICAL': 'bold_red',
+                    "DEBUG": "cyan",
+                    "INFO": "green",
+                    "WARNING": "yellow",
+                    "ERROR": "red",
+                    "CRITICAL": "bold_red",
                 },
                 secondary_log_colors={},  # Unused unless you define custom color fields
-                style='%'
+                style="%",
             )
         else:
             console_format = file_format
 
         console_handler.setFormatter(console_format)
+        console_handler.setLevel(logging.DEBUG)
         logger.addHandler(console_handler)
 
     return logger
 
-def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False):
+
+def color_text(text: str, color: str = None, bold: bool = False, dim: bool = False):
     if not isinstance(text, str):
         text = str(text)
     if color is None and not bold and not dim:
         return text
-    
+
     style = ""
     if COLOR_SUPPORT and color in COLOR_CODES:
-        style = RESET + (COLOR_CODES[color] if color != 'reset' else "")
+        style = RESET + (COLOR_CODES[color] if color != "reset" else "")
 
     if bold:
         style += BOLD
@@ -181,12 +192,3 @@ def color_text(text: str, color: str=None, bold: bool = False, dim: bool = False
         style += DIM
 
     return f"{COLOR_BEGIN_MARKER}{style}{text}{COLOR_END_MARKER}"
-
-if __name__ == "__main__":
-    logger = setup_logger("Test")
-    logger.info(
-        f"🎥 Encoding {color_text("fielname", dim=True)} of size "
-        f"{color_text("original_size", 'magenta')}, "
-        f"{color_text("left", 'magenta')}/{color_text("total", 'magenta')} "
-        f"videos has been processed"
-    )

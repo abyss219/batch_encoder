@@ -1,11 +1,13 @@
 from typing import Optional, List, Dict, Set, Union
 from abc import ABC
-from ..config import *
+from config import load_config
 from .encoder import PresetCRFEncoder
 from ..media import MediaFile, VideoStream
 
+config = load_config()
 
-class AV1Encode(PresetCRFEncoder, ABC):
+
+class AV1Encoder(PresetCRFEncoder, ABC):
     """
     Base class for AV1 encoding, inheriting from `PresetCRFEncoder`.
 
@@ -17,7 +19,8 @@ class AV1Encode(PresetCRFEncoder, ABC):
     - Provides a method for calculating optimal keyframe intervals based on frame rate.
     - Serves as a base for encoder-specific implementations (e.g., SVT-AV1, libaom-AV1).
     """
-    def get_keyframe_interval(self, video_stream:VideoStream, multiplier:int) -> str:
+
+    def get_keyframe_interval(self, video_stream: VideoStream, multiplier: int) -> str:
         """
         Computes the keyframe interval based on the video frame rate.
 
@@ -34,17 +37,22 @@ class AV1Encode(PresetCRFEncoder, ABC):
         Returns:
             str: The computed keyframe interval as a string.
         """
-        frame_rate = video_stream.frame_rate if video_stream.frame_rate else DEFAULT_FRAME_RATE
+        frame_rate = (
+            video_stream.frame_rate
+            if video_stream.frame_rate
+            else config.general.default_frame_rate
+        )
         interval = round(frame_rate * multiplier)
         return str(interval)
-    
-class SVTAV1Encoder(AV1Encode):
+
+
+class SVTAV1Encoder(AV1Encoder):
     """
     Handles encoding using the SVT-AV1 encoder.
 
-    SVT-AV1 (Scalable Video Technology for AV1) is a high-performance AV1 encoder 
-    developed by Intel and Netflix. It provides a balance between speed and quality 
-    through various encoding parameters, including presets, CRF, tuning metrics, 
+    SVT-AV1 (Scalable Video Technology for AV1) is a high-performance AV1 encoder
+    developed by Intel and Netflix. It provides a balance between speed and quality
+    through various encoding parameters, including presets, CRF, tuning metrics,
     and fast decode optimizations.
 
     Key Features:
@@ -55,21 +63,33 @@ class SVTAV1Encoder(AV1Encode):
     - Supports fast decode optimizations to reduce CPU load at the cost of compression efficiency.
     - Defaults to a 5 temporal layer structure but may override with hierarchical levels.
     """
-    DEFAULT_CRF = DEFAULT_CRF_SVTAV1
 
-    DEFAULT_PRESET = DEFAULT_PRESET_SVTAV1
-    
+    DEFAULT_CRF = config.svt_av1.crf
+
+    DEFAULT_PRESET = config.svt_av1.preset
+
     SUPPORTED_PIXEL_FORMATS = ["yuv420p", "yuv420p10le"]
 
-    def __init__(self, media_file: MediaFile, preset: Optional[int] = None, crf: Optional[int] = None,
-                 tune:int = DEFAULT_SVTAV1_TUNE, fast_decode: int = DEFAULT_SVTAV1_FAST_DECODE,
-                 delete_original: bool = DEFAULT_DELETE_ORIGIN, check_size:bool=DEFAULT_CHECK_SIZE, verify: bool = DEFAULT_VERIFY, 
-                 delete_threshold:float=DEFAULT_DELETE_THRESHOLD, output_dir: Optional[str] = None,
-                 ignore_codec:Set[str]={'av1'}, **kwargs):
+    def __init__(
+        self,
+        media_file: MediaFile,
+        preset: Optional[int] = None,
+        crf: Optional[int] = None,
+        tune: int = config.svt_av1.tune,
+        fast_decode: int = config.svt_av1.fast_decode,
+        delete_original: bool = config.verify.delete_origin,
+        check_size: bool = config.verify.check_size,
+        verify: bool = config.verify.verify,
+        delete_threshold: float = config.verify.delete_threshold,
+        output_dir: Optional[str] = None,
+        ignore_codec: Set[str] = {"av1"},
+        debug=False,
+        **kwargs,
+    ):
         """
         Initializes the SVT-AV1 Encoder with user-defined encoding parameters.
 
-        This constructor sets up SVT-AV1 encoding with options for tuning visual quality, 
+        This constructor sets up SVT-AV1 encoding with options for tuning visual quality,
         controlling encoding speed, and optimizing playback performance.
 
         Args:
@@ -100,27 +120,37 @@ class SVTAV1Encoder(AV1Encode):
                 - Defaults to ignoring AV1 streams to prevent redundant encoding.
         """
         if crf:
-            crf = max(1, min(int(crf), 63)) # Clamp between 1-63
+            crf = max(1, min(int(crf), 63))  # Clamp between 1-63
         if preset:
-            preset = max(1, min(int(preset), 13)) # Note that preset 13 is only meant for debugging and running fast convex-hull encoding.
-        
-        self.tune = str(tune) # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
-        
-        super().__init__(media_file, encoder="libsvtav1", preset=preset, crf=crf,
-                         delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
-                         check_size=check_size,
-                         output_dir=output_dir, ignore_codec=ignore_codec)
-        
+            preset = max(
+                1, min(int(preset), 13)
+            )  # Note that preset 13 is only meant for debugging and running fast convex-hull encoding.
+
+        self.tune = str(tune)  # Only 0, 1, 2 allowed. [0 = VQ, 1 = PSNR, 2 = SSIM]
+
+        super().__init__(
+            media_file,
+            encoder="libsvtav1",
+            preset=preset,
+            crf=crf,
+            delete_original=delete_original,
+            verify=verify,
+            delete_threshold=delete_threshold,
+            check_size=check_size,
+            output_dir=output_dir,
+            ignore_codec=ignore_codec,
+            debug=debug,
+        )
+
         if int(tune) < 0 or int(tune) > 2:
             raise ValueError("Tune values must be between 0 and 2.")
-        
-        
-        self.fast_decode = max(0, min(int(fast_decode), 2))  # Clamp between 0-2
-        self.logger.debug(f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"')
-            
-        
 
-    def get_fast_decode(self, video_stream:VideoStream) -> str:
+        self.fast_decode = max(0, min(int(fast_decode), 2))  # Clamp between 0-2
+        self.logger.debug(
+            f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"'
+        )
+
+    def get_fast_decode(self, video_stream: VideoStream) -> str:
         """
         Retrieves the fast decode setting for the given video stream.
 
@@ -138,7 +168,7 @@ class SVTAV1Encoder(AV1Encode):
         # else:
         #     self.logger.warning(f"⚠️ Fast decode is only supported for preset between 0 and 5. "
         #                         "Fast decode will not be applied for stream {video_stream.index}.")
-            
+
         #     return ""
         return str(self.fast_decode)
 
@@ -161,24 +191,26 @@ class SVTAV1Encoder(AV1Encode):
         Returns:
             Dict[VideoStream, List[str]]: A dictionary mapping video streams to their FFmpeg encoding arguments.
         """
-        video_args = super().prepare_video_args('-preset')
+        video_args = super().prepare_video_args("-preset")
 
         for stream, arg in video_args.items():
-            if 'copy' not in arg:
-                fast_decode = self.get_fast_decode(stream) # fast decode is only availiable for presets from 5 to 10
+            if "copy" not in arg:
+                fast_decode = self.get_fast_decode(
+                    stream
+                )  # fast decode is only availiable for presets from 5 to 10
                 if fast_decode:
                     fast_decode_args = f":fast-decode={self.fast_decode}"
                 else:
                     fast_decode_args = ""
-                
+
                 append_args = ["-svtav1-params", f"tune={self.tune}{fast_decode_args}"]
-                
+
                 keyframe_interval = self.get_keyframe_interval(stream, 5)
                 keyframe_interval_args = ["-g", keyframe_interval]
                 arg.extend(keyframe_interval_args)
                 arg.extend(append_args)
-        
-        self.logger.info(f'🔹 Tune: {self.tune} | Fast Decode: {self.fast_decode}')
+
+        self.logger.info(f"🔹 Tune: {self.tune} | Fast Decode: {self.fast_decode}")
 
         return video_args
 
@@ -196,12 +228,12 @@ class SVTAV1Encoder(AV1Encode):
         return f"{suffix}_tune-{self.tune}"
 
 
-class LibaomAV1Encoder(AV1Encode):
+class LibaomAV1Encoder(AV1Encoder):
     """
     Handles AV1 encoding using the libaom-AV1 encoder.
 
-    libaom-AV1 is the reference implementation of AV1 developed by AOMedia. It provides 
-    extensive rate-control options, multi-threading support, and high-quality encoding 
+    libaom-AV1 is the reference implementation of AV1 developed by AOMedia. It provides
+    extensive rate-control options, multi-threading support, and high-quality encoding
     at the cost of slower performance compared to other AV1 encoders like SVT-AV1.
 
     Key Features:
@@ -213,22 +245,41 @@ class LibaomAV1Encoder(AV1Encode):
     """
 
     SUPPORTED_PIXEL_FORMATS = [
-        "yuv420p", "yuv422p", "yuv444p", "gbrp",
-        "yuv420p10le", "yuv422p10le", "yuv444p10le",
-        "yuv420p12le", "yuv422p12le", "yuv444p12le",
-        "gbrp10le", "gbrp12le",
-        "gray", "gray10le", "gray12le"
+        "yuv420p",
+        "yuv422p",
+        "yuv444p",
+        "gbrp",
+        "yuv420p10le",
+        "yuv422p10le",
+        "yuv444p10le",
+        "yuv420p12le",
+        "yuv422p12le",
+        "yuv444p12le",
+        "gbrp10le",
+        "gbrp12le",
+        "gray",
+        "gray10le",
+        "gray12le",
     ]
 
+    DEFAULT_CRF = config.libaom_av1.crf
 
-    DEFAULT_CRF = DEFAULT_CRF_LIBAMOAV1
+    DEFAULT_PRESET = config.libaom_av1.preset
 
-    DEFAULT_PRESET = DEFAULT_PRESET_LIBAMOAV1
-
-    def __init__(self, media_file: MediaFile, preset: Optional[int] = None, crf: Optional[int] = None,
-                 delete_original: bool = DEFAULT_DELETE_ORIGIN, verify: bool = DEFAULT_VERIFY, 
-                 delete_threshold:float=DEFAULT_DELETE_THRESHOLD, check_size:bool=DEFAULT_CHECK_SIZE,
-                 output_dir: Optional[str] = None, ignore_codec:Set[str]={'av1'}, **kwargs):
+    def __init__(
+        self,
+        media_file: MediaFile,
+        preset: Optional[int] = None,
+        crf: Optional[int] = None,
+        delete_original: bool = config.verify.delete_origin,
+        verify: bool = config.verify.verify,
+        delete_threshold: float = config.verify.delete_threshold,
+        check_size: bool = config.verify.check_size,
+        output_dir: Optional[str] = None,
+        ignore_codec: Set[str] = {"av1"},
+        debug=False,
+        **kwargs,
+    ):
         """
         Initializes the libaom-AV1 encoder.
 
@@ -261,24 +312,32 @@ class LibaomAV1Encoder(AV1Encode):
 
         """
         if crf:
-            crf = max(1, min(int(crf), 63)) # Clamp between 0-63
+            crf = max(1, min(int(crf), 63))  # Clamp between 0-63
         if preset:
             preset = max(0, min(int(preset), 8))
 
         delete_threshold = max(0, min(delete_threshold, 100))
 
-        super().__init__(media_file, encoder="libaom-av1", preset=preset, crf=crf,
-                         delete_original=delete_original, verify=verify, delete_threshold=delete_threshold, 
-                         check_size=check_size,
-                         output_dir=output_dir, ignore_codec=ignore_codec)
+        super().__init__(
+            media_file,
+            encoder="libaom-av1",
+            preset=preset,
+            crf=crf,
+            delete_original=delete_original,
+            verify=verify,
+            delete_threshold=delete_threshold,
+            check_size=check_size,
+            output_dir=output_dir,
+            ignore_codec=ignore_codec,
+            debug=debug,
+        )
 
-
-    def get_keyint_min(self, video_stream:VideoStream, multiplier:int) -> str:
+    def get_keyint_min(self, video_stream: VideoStream, multiplier: int) -> str:
         """
         Returns the minimum keyframe interval for libaom-AV1.
 
-        In libaom-AV1, the `-keyint_min` parameter should be set equal to the `-g` (max keyframe interval) 
-        parameter for optimal performance. This ensures consistent keyframe placement, improving compression 
+        In libaom-AV1, the `-keyint_min` parameter should be set equal to the `-g` (max keyframe interval)
+        parameter for optimal performance. This ensures consistent keyframe placement, improving compression
         efficiency and seekability.
 
         Args:
@@ -311,23 +370,28 @@ class LibaomAV1Encoder(AV1Encode):
         Returns:
             Dict[VideoStream, List[str]]: A dictionary mapping video streams to their FFmpeg encoding arguments.
         """
-        video_args = super().prepare_video_args('-cpu-used')
+        video_args = super().prepare_video_args("-cpu-used")
 
         keyint_min_log = []
 
         append_args = ["-row-mt", "1", "-b:v", "0"]
 
         for stream, arg in video_args.items():
-            if 'copy' not in arg:
+            if "copy" not in arg:
                 keyint_min = self.get_keyint_min(stream, 10)
-                key_int_args = ["-g", self.get_keyframe_interval(stream, 10), "-keyint_min", keyint_min]
+                key_int_args = [
+                    "-g",
+                    self.get_keyframe_interval(stream, 10),
+                    "-keyint_min",
+                    keyint_min,
+                ]
                 arg.extend(key_int_args)
                 arg.extend(append_args)
 
                 keyint_min_log.append(keyint_min)
             else:
                 keyint_min_log.append("copy")
-        
+
         self.logger.info(f'🔹 Keyint Min: {", ".join(keyint_min_log)}')
 
         return video_args

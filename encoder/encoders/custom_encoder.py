@@ -4,12 +4,13 @@ import subprocess
 import time
 import re
 from tqdm import tqdm
-from ..utils.logger import color_text
+from utils import color_text
 from .av1_encoder import SVTAV1Encoder
 from .hevc_encoder import HevcEncoder
 from .encoder import PresetCRFEncoder
 from ..media import MediaFile, VideoStream
-from ..config import EncodingStatus
+from config import EncodingStatus
+
 
 def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
     """
@@ -32,12 +33,16 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
         ValueError: If an unsupported codec is provided.
     """
     if codec not in {"hevc", "av1"}:
-        raise ValueError(f"❌ Invalid codec: '{codec}'. Supported codecs: 'hevc', 'av1'.")
+        raise ValueError(
+            f"❌ Invalid codec: '{codec}'. Supported codecs: 'hevc', 'av1'."
+        )
 
     # Selects the parent class based on the codec type
-    parent_class: Type[PresetCRFEncoder] = HevcEncoder if codec == "hevc" else SVTAV1Encoder
+    parent_class: Type[PresetCRFEncoder] = (
+        HevcEncoder if codec == "hevc" else SVTAV1Encoder
+    )
 
-    class CustomEncoding(parent_class):
+    class CustomEncoder(parent_class):
         """
         A dynamically created encoding class that inherits from either HevcEncoder or AV1Encoder.
 
@@ -51,12 +56,11 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
         # Dictionary of NLMeans denoising presets
         NLMEANS_SETTINGS = {
-            "light": "nlmeans=s=1.0:p=3:r=7",      # Ultra-Light Denoising (Almost No Detail Loss)
-            "mild": "nlmeans=s=1.5:p=5:r=9",       # Balanced Denoising (Mild but Effective) - Recommended
+            "light": "nlmeans=s=1.0:p=3:r=7",  # Ultra-Light Denoising (Almost No Detail Loss)
+            "mild": "nlmeans=s=1.5:p=5:r=9",  # Balanced Denoising (Mild but Effective) - Recommended
             "moderate": "nlmeans=s=2.5:p=7:r=11",  # Moderate Denoising (Good for Noisy Night Videos)
-            "heavy": "nlmeans=s=4.0:p=9:r=15"      # Heavy Denoising (For Strong Noise & Film Restoration)
+            "heavy": "nlmeans=s=4.0:p=9:r=15",  # Heavy Denoising (For Strong Noise & Film Restoration)
         }
-
 
         # Supported pixel formats for NLMeans filtering
         NLMEANS_PIXEL_FORMATS = [
@@ -66,19 +70,25 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             "yuv411p",  # 4:1:1 chroma subsampling, 8-bit, YUV
             "yuv440p",  # 4:4:0 chroma subsampling, 8-bit, YUV
             "yuv444p",  # 4:4:4 chroma subsampling, 8-bit, YUV
-            "yuvj444p", # 4:4:4 full-range chroma subsampling, 8-bit, YUV
-            "yuvj440p", # 4:4:0 full-range chroma subsampling, 8-bit, YUV
-            "yuvj422p", # 4:2:2 full-range chroma subsampling, 8-bit, YUV
-            "yuvj420p", # 4:2:0 full-range chroma subsampling, 8-bit, YUV
-            "yuvj411p", # 4:1:1 full-range chroma subsampling, 8-bit, YUV
-            "gray8",    # Grayscale, 8-bit
-            "gbrp"      # Planar RGB, 8-bit
+            "yuvj444p",  # 4:4:4 full-range chroma subsampling, 8-bit, YUV
+            "yuvj440p",  # 4:4:0 full-range chroma subsampling, 8-bit, YUV
+            "yuvj422p",  # 4:2:2 full-range chroma subsampling, 8-bit, YUV
+            "yuvj420p",  # 4:2:0 full-range chroma subsampling, 8-bit, YUV
+            "yuvj411p",  # 4:1:1 full-range chroma subsampling, 8-bit, YUV
+            "gray8",  # Grayscale, 8-bit
+            "gbrp",  # Planar RGB, 8-bit
         ]
 
-
-        def __init__(self, media_file:MediaFile, denoise:Optional[str]=None, 
-                     delete_original:bool=True, check_size:bool=True, verify:bool=False, 
-                     ignore_codec:Set={}, **kwargs):
+        def __init__(
+            self,
+            media_file: MediaFile,
+            denoise: Optional[str] = None,
+            delete_original: bool = True,
+            check_size: bool = True,
+            verify: bool = False,
+            ignore_codec: Set = {},
+            **kwargs,
+        ):
             """
             Initializes the custom encoding class.
 
@@ -93,11 +103,16 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 ignore_codec (Set[str]): Codecs that should not be re-encoded.
                 **kwargs: Additional parameters passed to the base encoder class.
             """
-            super().__init__(media_file, delete_original=delete_original, check_size=check_size,
-                             verify=verify, 
-                             ignore_codec=ignore_codec, **kwargs)
+            super().__init__(
+                media_file,
+                delete_original=delete_original,
+                check_size=check_size,
+                verify=verify,
+                ignore_codec=ignore_codec,
+                **kwargs,
+            )
 
-            self.denoise = denoise # Stores the selected denoising level
+            self.denoise = denoise  # Stores the selected denoising level
 
         def prepare_cmd(self) -> Optional[List[str]]:
             """
@@ -110,9 +125,9 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 Optional[List[str]]: The FFmpeg command arguments, or None if encoding is skipped.
             """
             cmd = super().prepare_cmd()
-            
+
             if cmd:
-                pipeline_args = ["-progress", "pipe:1", "-nostats"] # Progress tracking
+                pipeline_args = ["-progress", "pipe:1", "-nostats"]  # Progress tracking
 
                 # Modify the command by inserting denoise and progress args before the output file
                 cmd = cmd[:-1] + pipeline_args + cmd[-1:]
@@ -123,7 +138,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             Retrieves the duration of the video file in seconds.
 
             Returns:
-                Optional[float]: The total duration of the video file. 
+                Optional[float]: The total duration of the video file.
                 If duration is None or 0, the function returns None.
             """
             duration = self.media_file.video_info[0].duration
@@ -133,7 +148,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     return None
                 return duration
             return None
-            
+
         def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
             """
             Prepares FFmpeg video encoding arguments, including optional denoising.
@@ -146,20 +161,21 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             """
             video_args = super().prepare_video_args()
 
-            denoise_args = self.NLMEANS_SETTINGS.get(self.denoise, "") # Retrieve denoise settings
-            
+            denoise_args = self.NLMEANS_SETTINGS.get(
+                self.denoise, ""
+            )  # Retrieve denoise settings
+
             if denoise_args:
                 for stream, arg in video_args.items():
-                    if 'copy' not in arg:
+                    if "copy" not in arg:
                         vf_format = self.get_pix_fmt(stream, self.NLMEANS_PIXEL_FORMATS)
-                        
+
                         vf_format_args = ["-vf", f"format={vf_format},{denoise_args}"]
-                        
+
                         arg.extend(vf_format_args)
                 self.logger.info(f"Applied denoise. level: {denoise_args}")
 
             return video_args
-
 
         def _encode(self) -> EncodingStatus:
             """
@@ -177,13 +193,14 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 return EncodingStatus.SKIPPED
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
 
-            
             # Get video duration
             duration = self.get_duration()
             use_pbar = duration is not None
 
             if use_pbar:
-                self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
+                self.logger.info(
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}"
+                )
                 self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
                 pbar = tqdm(
                     total=round(duration, 2),  # Total duration of the video
@@ -191,7 +208,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     position=0,
                     leave=True,
                     dynamic_ncols=True,
-                    bar_format="{l_bar}{bar} | {n:.2f}/{total:.2f}s [{elapsed}<{remaining}{postfix}]"
+                    bar_format="{l_bar}{bar} | {n:.2f}/{total:.2f}s [{elapsed}<{remaining}{postfix}]",
                 )
 
                 start_time = time.time()
@@ -200,10 +217,10 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 process = subprocess.Popen(
                     ffmpeg_cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL, # Suppress stderr output
+                    stderr=subprocess.DEVNULL,  # Suppress stderr output
                     bufsize=1,  # Line-buffered
                     universal_newlines=True,
-                    encoding='utf-8'
+                    encoding="utf-8",
                 )
 
                 # Track encoding progress in real-time
@@ -216,8 +233,10 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                             try:
                                 hours, minutes, seconds = map(float, match.groups())
                             except ValueError as e:
-                                self.logger.warning(f"⚠️ Invalid time format in FFmpeg output: {match.groups()} ({e}). Progress bar disabled.")
-                                use_pbar = False # disable future tqdm
+                                self.logger.warning(
+                                    f"⚠️ Invalid time format in FFmpeg output: {match.groups()} ({e}). Progress bar disabled."
+                                )
+                                use_pbar = False  # disable future tqdm
                                 pbar.close()
                                 pbar = None
                                 continue
@@ -226,12 +245,18 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                             self.logger.debug(f"⏳ Encoded time: {elapsed_time:.2f}s")
 
                             progress_update = max(0, elapsed_time - pbar.n)
-                            self.logger.debug(f"📈 Progress update: +{progress_update:.2f}s")
+                            self.logger.debug(
+                                f"📈 Progress update: +{progress_update:.2f}s"
+                            )
                             pbar.update(progress_update)
 
                             # Compute Encoding Speed (n / elapsed_s)
                             elapsed_real_time = time.time() - start_time
-                            encoding_speed = elapsed_time / elapsed_real_time if elapsed_real_time > 0 else 0
+                            encoding_speed = (
+                                elapsed_time / elapsed_real_time
+                                if elapsed_real_time > 0
+                                else 0
+                            )
 
                             # Update tqdm with correct speed
                             pbar.set_postfix_str(f"{encoding_speed:.4f}x")
@@ -242,23 +267,30 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     pbar.close()  # Close tqdm progress bar
 
                 if process.returncode == 0:
-                    self.logger.debug(f"✅ Encoding successful: {self.media_file.file_path}")
+                    self.logger.debug(
+                        f"✅ Encoding successful: {self.media_file.file_path}"
+                    )
                     return EncodingStatus.SUCCESS
                 else:
                     raise subprocess.CalledProcessError(
-                        returncode=process.returncode,
-                        cmd=ffmpeg_cmd)
+                        returncode=process.returncode, cmd=ffmpeg_cmd
+                    )
 
-            else: # does not use pbar
-                self.logger.warning("⚠️ Progress is not availiable. Fallback to ffmpeg output.")
-                ffmpeg_cmd = [arg for arg in ffmpeg_cmd if arg not in ("-progress", "pipe:1", "-nostats")]
-                self.logger.info(f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}")
-                subprocess.run(ffmpeg_cmd, check=True, encoding='utf-8')
+            else:  # does not use pbar
+                self.logger.warning(
+                    "⚠️ Progress is not availiable. Fallback to ffmpeg output."
+                )
+                ffmpeg_cmd = [
+                    arg
+                    for arg in ffmpeg_cmd
+                    if arg not in ("-progress", "pipe:1", "-nostats")
+                ]
+                self.logger.info(
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}"
+                )
+                subprocess.run(ffmpeg_cmd, check=True, encoding="utf-8")
 
             return EncodingStatus.SUCCESS
-            
-
-
 
         def _get_filename_suffix(self) -> str:
             """
@@ -270,7 +302,9 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 str: The filename suffix reflecting the encoding settings.
             """
             suffix = super()._get_filename_suffix()
-            suffix = suffix.replace(self.__class__.__name__, self.__class__.__bases__[0].__name__)
+            suffix = suffix.replace(
+                self.__class__.__name__, self.__class__.__bases__[0].__name__
+            )
             return suffix
 
-    return CustomEncoding
+    return CustomEncoder

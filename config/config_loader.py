@@ -6,6 +6,7 @@ from .config_definitions import Config
 
 _config: Config = None  # module-level singleton
 
+
 def load_config(path: Optional[str] = None) -> Config:
     global _config
     if _config is not None:
@@ -18,7 +19,9 @@ def load_config(path: Optional[str] = None) -> Config:
                 path = candidate
                 break
         else:
-            raise FileNotFoundError("No configuration file found (config.yaml or config.yml).")
+            raise FileNotFoundError(
+                "No configuration file found (config.yaml or config.yml)."
+            )
 
     with open(path, "r") as f:
         data = yaml.safe_load(f)
