@@ -18,9 +18,11 @@ def load_config(path: Optional[str] = None) -> Config:
                 path = candidate
                 break
         else:
-            raise FileNotFoundError(
-                "No configuration file found (config.yaml or config.yml)."
-            )
+            _config = Config()
+            _config.validate()
+            print("No configuration file found. Using default configuration.")
+            return _config
+
 
     with open(path, "r") as f:
         data = yaml.safe_load(f)
