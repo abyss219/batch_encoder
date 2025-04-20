@@ -199,7 +199,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
             if use_pbar:
                 self.logger.info(
-                    f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}"
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
                 )
                 self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
                 pbar = tqdm(
@@ -286,7 +286,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     if arg not in ("-progress", "pipe:1", "-nostats")
                 ]
                 self.logger.info(
-                    f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}"
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
                 )
                 subprocess.run(ffmpeg_cmd, check=True, encoding="utf-8")
 

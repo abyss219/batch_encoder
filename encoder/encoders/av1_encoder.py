@@ -1,5 +1,7 @@
 from typing import Optional, List, Dict, Set, Union
 from abc import ABC
+from utils import color_text
+from pathlib import Path
 from config import load_config
 from .encoder import PresetCRFEncoder
 from ..media import MediaFile, VideoStream
@@ -81,7 +83,7 @@ class SVTAV1Encoder(AV1Encoder):
         check_size: bool = config.verify.check_size,
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {"av1"},
         debug=False,
         **kwargs,
@@ -145,32 +147,11 @@ class SVTAV1Encoder(AV1Encoder):
         if int(tune) < 0 or int(tune) > 2:
             raise ValueError("Tune values must be between 0 and 2.")
 
-        self.fast_decode = max(0, min(int(fast_decode), 2))  # Clamp between 0-2
+        self.fast_decode = str(max(0, min(int(fast_decode), 2)))  # Clamp between 0-2
         self.logger.debug(
             f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"'
         )
 
-    def get_fast_decode(self, video_stream: VideoStream) -> str:
-        """
-        Retrieves the fast decode setting for the given video stream.
-
-        Fast decode is an SVT-AV1 feature that optimizes playback performance at the cost of compression efficiency.
-
-        Args:
-            video_stream (VideoStream): The video stream to encode.
-
-        Returns:
-            str: The fast decode setting as a string.
-        """
-        # preset = int(self.get_preset(video_stream))
-        # if preset >= 5 and preset <= 10:
-        #     return str(self.fast_decode)
-        # else:
-        #     self.logger.warning(f"⚠️ Fast decode is only supported for preset between 0 and 5. "
-        #                         "Fast decode will not be applied for stream {video_stream.index}.")
-
-        #     return ""
-        return str(self.fast_decode)
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:
         """
@@ -195,9 +176,7 @@ class SVTAV1Encoder(AV1Encoder):
 
         for stream, arg in video_args.items():
             if "copy" not in arg:
-                fast_decode = self.get_fast_decode(
-                    stream
-                )  # fast decode is only availiable for presets from 5 to 10
+                fast_decode = self.fast_decode  # fast decode is only availiable for presets from 5 to 10
                 if fast_decode:
                     fast_decode_args = f":fast-decode={self.fast_decode}"
                 else:
@@ -210,7 +189,7 @@ class SVTAV1Encoder(AV1Encoder):
                 arg.extend(keyframe_interval_args)
                 arg.extend(append_args)
 
-        self.logger.info(f"🔹 Tune: {self.tune} | Fast Decode: {self.fast_decode}")
+        self.logger.info(f"🔹 Tune: {color_text(self.tune, 'cyan')} | Fast Decode: {color_text(self.fast_decode, 'cyan')}")
 
         return video_args
 
@@ -392,6 +371,6 @@ class LibaomAV1Encoder(AV1Encoder):
             else:
                 keyint_min_log.append("copy")
 
-        self.logger.info(f'🔹 Keyint Min: {", ".join(keyint_min_log)}')
+        self.logger.info(f'🔹 Keyint Min: {color_text(", ".join(keyint_min_log), 'cyan')}')
 
         return video_args

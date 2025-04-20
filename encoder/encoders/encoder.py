@@ -1,11 +1,11 @@
-import os
 import subprocess
 import sys
 import logging
 from abc import ABC
 from typing import List, Dict, Optional, Set, Union
+from pathlib import Path
 from utils import setup_logger, color_text
-from config import load_config, EncodingStatus
+from config import load_config, EncodingStatus, FFMPEG
 from ..media import MediaFile, VideoStream, AudioStream
 
 config = load_config()
@@ -47,7 +47,7 @@ class CRFEncoder(ABC):
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
         check_size: bool = config.verify.check_size,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {},
         debug=False,
     ):
@@ -61,13 +61,13 @@ class CRFEncoder(ABC):
             delete_original (bool, optional): Whether to delete the original file after encoding. Defaults to DEFAULT_DELETE_ORIGIN.
             verify (bool, optional): Whether to verify encoding quality with VMAF. Defaults to DEFAULT_VERIFY.
             delete_threshold (float, optional): Minimum acceptable VMAF score for deletion. Defaults to DEFAULT_DELETE_THRESHOLD.
-            output_dir (Optional[str], optional): Directory for output files. Defaults to None (same directory as media_file).
+            output_dir (Optional[Union[str, Path]], optional): Directory for output files. Defaults to None (same directory as media_file).
             ignore_codec (Set[str], optional): Set of codecs to be copied without re-encoding. Defaults to an empty set.
         """
 
         self.logger = setup_logger(
             self.__class__.__name__,
-            os.path.join(config.general.log_dir, "encoder.log"),
+            Path(config.general.log_dir) / "encoder.log",
             logging.DEBUG if debug else logging.INFO,
         )
         self.debug = debug
@@ -78,13 +78,11 @@ class CRFEncoder(ABC):
         self.delete_threshold = delete_threshold
         self.check_size = check_size
         self.verify = verify
-        self.output_dir = output_dir or os.path.dirname(
-            media_file.file_path
-        )  # Set output directory
+        self.output_dir = Path(output_dir) if output_dir else media_file.file_path.parent  # Set output directory
         self.ignore_codec = ignore_codec
 
         # Ensure output directory exists
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.output_tmp_file = self.generate_tmp_output_path()
         self.new_file_path = self.generate_new_file_path()
@@ -92,7 +90,7 @@ class CRFEncoder(ABC):
             f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"'
         )
 
-    def generate_new_file_path(self) -> str:
+    def generate_new_file_path(self) -> Path:
         """
         Generates a unique file path for the encoded video.
 
@@ -105,21 +103,21 @@ class CRFEncoder(ABC):
         if self.delete_original is False:
             return self.output_tmp_file
 
-        base_name = os.path.splitext(self.media_file.file_name)[0]
-        new_path = os.path.join(self.output_dir, f"{base_name}.mp4")
+        base_name = self.media_file.file_path.stem
+        new_path = self.output_dir / f"{base_name}.mp4"
 
         # If input file is already an MP4, we are going to overwrite the input file
-        if new_path == self.media_file.file_path:
+        if new_path.resolve(strict=False) == self.media_file.file_path.resolve(strict=False):
             return new_path
 
         counter = 1
-        while os.path.exists(new_path):  # Ensure uniqueness
-            new_path = os.path.join(self.output_dir, f"{base_name}_{counter}.mp4")
+        while new_path.exists():  # Ensure uniqueness
+            new_path = self.output_dir / f"{base_name}_{counter}.mp4"
             counter += 1
 
         return new_path
 
-    def generate_tmp_output_path(self) -> str:
+    def generate_tmp_output_path(self) -> Path:
         """
         Generates a temporary output file path based on encoding parameters.
 
@@ -128,22 +126,20 @@ class CRFEncoder(ABC):
         Returns:
             str: The temporary output file path.
         """
-        base_name = os.path.splitext(self.media_file.file_name)[0]
+        base_name = self.media_file.file_path.stem
 
         # Get the suffix from the subclass
         suffix = self._get_filename_suffix()
 
-        output_filename = os.path.join(self.output_dir, f"{base_name}{suffix}.mp4")
+        output_path = self.output_dir / f"{base_name}{suffix}.mp4"
 
         counter = 1
-        while os.path.exists(output_filename):  # Ensure unique filename
-            output_filename = os.path.join(
-                self.output_dir, f"{base_name}{suffix}_{counter}.mp4"
-            )
+        while output_path.exists():  # Ensure unique filename
+            output_path = self.output_dir / f"{base_name}{suffix}_{counter}.mp4"
             counter += 1
 
-        self.logger.debug(f"📂 Generated output filename: {output_filename}")
-        return output_filename
+        self.logger.debug(f"📂 Generated output filename: {output_path}")
+        return output_path
 
     def get_crf(self, video_stream: VideoStream) -> str:
         """
@@ -236,17 +232,17 @@ class CRFEncoder(ABC):
             return None
 
         cmd = [
-            "ffmpeg",
+            FFMPEG,
             "-y",
             "-i",
-            self.media_file.file_path,
+            self.media_file.file_path.resolve(),
             *video_args_flatten,
             *audio_args_flatten,
             "-c:s",
             "copy",
             "-movflags",
             "+faststart",
-            self.output_tmp_file,
+            self.output_tmp_file.resolve(strict=False),
         ]
         return cmd
 
@@ -277,8 +273,8 @@ class CRFEncoder(ABC):
             sub_args = []
             sub_args.extend(video_stream.map_prefix(counter))
             if video_stream.codec in self.ignore_codec:
-                self.logger.info(
-                    f"⚠️ Skipping encoding: The input video '{self.media_file.file_name}' is already in {video_stream.codec} format."
+                self.logger.debug(
+                    f"⚠️ Skipping encoding: An input video stream '{self.media_file.file_path.name}' is already in {video_stream.codec} format."
                 )
                 sub_args.extend(["copy"])
                 crf_log.append("copy")
@@ -299,7 +295,10 @@ class CRFEncoder(ABC):
 
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
         self.logger.info(
-            f'🔹 {self.__class__.__name__} encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Resolution: {", ".join(resolution_log)} | CRF: {", ".join(crf_log)}'
+            f'🔹 {self.__class__.__name__} encoding initialized for '
+            f'"{color_text(self.media_file.file_path.name, dim=True)}" | '
+            f'Resolution: {color_text(", ".join(resolution_log), "cyan")} | '
+            f'CRF: {color_text(", ".join(crf_log), "cyan")}'
         )
         return video_args
 
@@ -378,11 +377,12 @@ class CRFEncoder(ABC):
         return EncodingStatus.SUCCESS
 
     def _delete_encoded(self) -> bool:
-        if os.path.isfile(self.output_tmp_file):
+        if self.output_tmp_file.is_file():
             try:
-                os.remove(self.output_tmp_file)
+                self.output_tmp_file.unlink()
                 self.logger.debug(f"🧹 Deleted temp file: {self.output_tmp_file}")
-            except PermissionError as e:
+                self.output_tmp_file = None
+            except (PermissionError, OSError) as e:
                 self.logger.warning(
                     f"⚠️ Cannot delete '{self.output_tmp_file}': file is in use."
                 )
@@ -400,29 +400,26 @@ class CRFEncoder(ABC):
         Returns:
             EncodingStatus: SUCCESS if replacement was successful, FAILED otherwise.
         """
-        try:
-            self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
-            if os.path.isfile(self.media_file.file_path):
-                os.remove(self.media_file.file_path)
-                if os.path.isfile(self.output_tmp_file) and not os.path.isfile(
-                    self.new_file_path
-                ):
-                    os.rename(self.output_tmp_file, self.new_file_path)
-                else:
-                    self.logger.error(
-                        f"❌ Failed to rename encoded file {self.output_tmp_file} into {self.new_file_path}. Encoded file has been deleted."
-                    )
-                    return EncodingStatus.FAILED
-            else:
+        
+        self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
+        if self.output_tmp_file.is_file():
+            try:
+                self.output_tmp_file.replace(self.new_file_path)
+                self.output_tmp_file = None
+            except (OSError, PermissionError) as e:
                 self.logger.error(
-                    f"❌ Failed to delete original file {self.media_file.file_path}. Encoded file and original file will not be deleted."
+                    f"❌ Failed to rename encoded file {self.output_tmp_file} into {self.new_file_path}: {e}."
                 )
-            self.logger.debug(
-                f"📁 Successfully replaced {color_text(self.media_file.file_name, dim=True)} with {color_text(os.path.basename(self.new_file_path), dim=True)}"
+                return EncodingStatus.FAILED
+        else:
+            self.logger.error(
+                f"❌ Temporary encoded file does not exist: {self.output_tmp_file}"
             )
-        except OSError as e:
-            self.logger.error(f"❌ Failed to delete original file: {e}")
-            return EncodingStatus.FAILED
+        
+        self.logger.debug(
+            f"📁 Successfully replaced {color_text(self.media_file.file_path.name, dim=True)} with encoded {color_text(self.new_file_path.name, dim=True)}"
+        )
+
         return EncodingStatus.SUCCESS
 
     def clean_up(self, status: EncodingStatus):
@@ -458,14 +455,22 @@ class CRFEncoder(ABC):
                     replace_file = False
 
             if self.check_size and status == EncodingStatus.SUCCESS:
-                if os.path.getsize(self.output_tmp_file) >= os.path.getsize(
-                    self.media_file.file_path
-                ):
-                    self.logger.warning(
-                        "⚠️ The encoded video has a larger size than the original."
-                    )
-                    replace_file = False
-                    status = EncodingStatus.LARGESIZE
+                try:
+                    original_size = self.media_file.file_path.stat().st_size
+                    encoded_size = self.output_tmp_file.stat().st_size
+
+                    if encoded_size >= original_size:
+                        self.logger.warning("⚠️ The encoded video has a larger size than the original.")
+                        replace_file = False
+                        status = EncodingStatus.LARGESIZE
+
+                except FileNotFoundError as e:
+                    if not self.output_tmp_file.exists():
+                        self.logger.error(f"❌ Output temp file does not exist: {self.output_tmp_file}")
+                        status = EncodingStatus.FAILED
+                    if not self.media_file.file_path.exists():
+                        self.logger.error(f"❌ Original media file does not exist: {self.media_file.file_path}")
+                    
 
             if replace_file and status == EncodingStatus.SUCCESS:
                 status = self._replace_original()
@@ -493,7 +498,7 @@ class CRFEncoder(ABC):
         if not ffmpeg_cmd:
             return EncodingStatus.SKIPPED
         self.logger.info(
-            f"🚀 Final ffmpeg arg: {color_text(" ".join(ffmpeg_cmd), 'reset', dim=True)}"
+            f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
         )
 
         subprocess.run(ffmpeg_cmd, check=True, encoding="utf-8")
@@ -523,11 +528,11 @@ class CRFEncoder(ABC):
             ret_state = self._encode()
             if ret_state == EncodingStatus.SUCCESS:
                 # check size reduction
-                encoded_size = os.path.getsize(self.output_tmp_file)
-                original_size = os.path.getsize(self.media_file.file_path)
+                encoded_size = self.output_tmp_file.stat().st_size
+                original_size = self.media_file.file_path.stat().st_size
                 size_reduction = 100 * (1 - (encoded_size / original_size))
                 self.logger.info(
-                    f"✅ Encoding completed: {color_text(self.media_file.file_name, dim=True)} "
+                    f"✅ Encoding completed: {color_text(self.media_file.file_path.name, dim=True)} "
                     f"({color_text(f'{self.human_readable_size(original_size)} → {self.human_readable_size(encoded_size)}', 'cyan', bold=True)}, "
                     f"Reduction: {color_text(f'{size_reduction:.2f}%', 'magenta')})"
                 )
@@ -609,7 +614,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
         check_size: bool = config.verify.check_size,
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {},
         debug=False,
     ):
@@ -714,6 +719,6 @@ class PresetCRFEncoder(CRFEncoder, ABC):
             else:
                 preset_log.append("copy")
 
-        self.logger.info(f'🔹 Preset: {", ".join(preset_log)}')
+        self.logger.info(f'🔹 Preset: {color_text(", ".join(preset_log), 'cyan')}')
 
         return video_args

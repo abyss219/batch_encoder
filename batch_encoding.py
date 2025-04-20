@@ -1,6 +1,5 @@
 from typing import Union, List, Optional
 import re
-import os
 import heapq
 import pickle
 import hashlib
@@ -8,6 +7,7 @@ import argparse
 import sys
 import time
 import logging
+from pathlib import Path
 from encoder import *
 from config import load_config, EncodingStatus, RESOLUTION
 from utils import setup_logger, color_text
@@ -221,15 +221,12 @@ class BatchEncoder:
     It prioritizes larger videos using a max heap to maximize storage savings efficiently.
     """
 
-    STATE_FILE_PREFIX = "encoder_state"
-    LOG_FILE_PREFIX = "batch_encoding"
-
     # List of efficient codecs that do not require re-encoding
     EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
     def __init__(
         self,
-        directory: str,
+        directory: Union[str, Path],
         min_size: Union[str, float] = DEFAULT_MIN_SIZE,
         verify: bool = False,
         force_reset: bool = False,
@@ -256,21 +253,18 @@ class BatchEncoder:
                                             Videos below this are skipped.
             force (bool): If True, encodes all videos, even if they are already in an efficient codec.
         """
-
-        if not os.path.isdir(directory):
+        self.directory = Path(directory)
+        if not self.directory.is_dir():
             raise ValueError(
                 f"The input to {self.__class__.__name__} must be a directory"
             )
-        self.directory = directory
         self.min_size = min_size
         self.min_size_bytes = self.parse_size(min_size)
-        self.dir_hash = self.hash_directory(directory)  # Generate hash for directory\
-        self.log_file = os.path.join(
-            config.general.log_dir, f"{self.LOG_FILE_PREFIX}_{self.dir_hash}.log"
-        )
-        self.state_file = os.path.join(
-            config.general.log_dir, f"{self.STATE_FILE_PREFIX}_{self.dir_hash}.pkl"
-        )
+        self.dir_hash = self.hash_directory(directory)  # Generate hash for directory
+
+        log_dir = Path(config.general.log_dir)
+        self.log_file = log_dir / f"{self.__class__.__name__}_{self.dir_hash}.log"
+        self.state_file = log_dir / f"{self.__class__.__name__}_{self.dir_hash}.pkl"
 
         self.denoise = denoise
         self.verify = verify
@@ -323,7 +317,7 @@ class BatchEncoder:
         """
         return hashlib.md5(directory.encode()).hexdigest()[:8]  # Short hash
 
-    def get_video_files(self) -> List[str]:
+    def get_video_files(self) -> List[Path]:
         """
         Recursively retrieves all video files in the directory.
 
@@ -331,11 +325,11 @@ class BatchEncoder:
             List[str]: A list of video file paths.
         """
         video_files = []
-        for root, _, files in os.walk(self.directory):
-            for file in files:
-                if any(file.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
-                    video_files.append(os.path.join(root, file))
-                    self.logger.debug(f"Found video {file}")
+        for path in self.directory.rglob("*"):
+            if path.is_file() and any(path.suffix.lower() == ext for ext in VIDEO_EXTENSIONS):
+                video_files.append(path)
+                self.logger.debug(f"Found video {path.name}")
+
         return video_files
 
     def prepare_video_queue(self):
@@ -351,7 +345,7 @@ class BatchEncoder:
                 continue  # Skip already processed files
 
             try:
-                file_size = os.path.getsize(file)
+                file_size = file.stat().st_size
                 if file_size < self.min_size_bytes:
                     log = f"Skipping {file} (Size: {CustomEncoding.human_readable_size(file_size)}) - Below threshold of {self.min_size}."
                     self.logger.debug(log)
@@ -403,10 +397,10 @@ class BatchEncoder:
 
             original_size = -neg_file_size
             self.logger.info(
-                f"🎥 Encoding {color_text(media_file.file_name, dim=True)} of size "
+                f"🎥 Encoding {color_text(media_file.file_path.name, dim=True)} of size "
                 f"{color_text(CustomEncoding.human_readable_size(original_size), 'yellow')}, "
-                f"{color_text(self.initial_queue_size - len(self.video_queue), 'cyan')}/{color_text(self.initial_queue_size, 'magenta', bold=True)} "
-                f"videos has been processed"
+                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')} / {color_text(self.initial_queue_size, 'cyan', bold=True)} "
+                f"videos have been processed."
             )
 
             ignore_codec = {} if self.force else self.EFFICIENT_CODEC
@@ -428,12 +422,12 @@ class BatchEncoder:
             status = encoder.encode_wrapper()
 
             if status == EncodingStatus.SUCCESS:
-                encoded_size = os.path.getsize(encoder.new_file_path)
+                encoded_size = encoder.new_file_path.stat().st_size
                 self.logger.debug(encoder.new_file_path)
 
                 self.success_encodings.add(media_file.file_path)
-                if os.path.isfile(media_file.file_path):
-                    self.total_encoded_size += os.path.getsize(media_file.file_path)
+                if media_file.file_path.is_file():
+                    self.total_encoded_size += media_file.file_path.stat().st_size
                     self.total_original_size += original_size
 
             elif status == EncodingStatus.SKIPPED:
@@ -447,14 +441,15 @@ class BatchEncoder:
                 self.logger.warning(f"❌ Encoding failed for {media_file.file_path}.")
             elif status == EncodingStatus.LOWQUALITY:
                 self.logger.warning(
-                    f"❌ The encoded video {color_text(media_file.file_name, dim=True)} has been deleted."
+                    f"❌ The encoded video {color_text(media_file.file_path.name, dim=True)} has been deleted."
                 )
                 encoder._delete_encoded()
                 pass
             elif status == EncodingStatus.LARGESIZE:
                 size_log = "(Unknown size change)"
-                if os.path.isfile(encoder.output_tmp_file):
-                    encoded_size = os.path.getsize(encoder.output_tmp_file)
+
+                if encoder.output_tmp_file.is_file():
+                    encoded_size = encoder.output_tmp_file.stat().st_size
                     size_log = (
                         CustomEncoding.human_readable_size(original_size)
                         + " → "
@@ -466,7 +461,7 @@ class BatchEncoder:
                 self.skipped_videos[media_file.file_path] = log
                 self.logger.warning(log)
 
-            self.logger.info(f"🕐 Encoding took {color_text(self.format_time(time.time()-start_time), 'magenta')}")
+            self.logger.info(f"🕐 Encoding took {color_text(self.format_time(time.time()-start_time), 'cyan')}")
 
             self.save_state()  # Save state in case of failure
 
@@ -521,7 +516,7 @@ class BatchEncoder:
 
     def load_state(self) -> bool:
         """Load the previous encoding state if available, reset if directory has changed."""
-        if os.path.exists(self.state_file):
+        if self.state_file.is_file():
             try:
                 with open(self.state_file, "rb") as f:
                     state = pickle.load(f)
@@ -689,7 +684,7 @@ class BatchEncoder:
 if __name__ == "__main__":
     args = parse_arguments()
 
-    if not os.path.isdir(args.directory):
+    if not Path(args.directory).is_dir():
         print("Error: input argument not a directory.")
         sys.exit(1)
 

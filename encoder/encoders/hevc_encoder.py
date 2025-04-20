@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Set, Union
 from utils import color_text
+from pathlib import Path
 from ..media import MediaFile, VideoStream
 from .encoder import PresetCRFEncoder
 from config import load_config
@@ -56,7 +57,7 @@ class HevcEncoder(PresetCRFEncoder):
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
         check_size: bool = config.verify.check_size,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {"hevc"},
         debug=False,
         **kwargs,
@@ -127,8 +128,8 @@ class HevcEncoder(PresetCRFEncoder):
                 sub_args.extend(video_stream.map_prefix(counter))
                 if video_stream.tag == "hev1":
                     # Convert hev1 to hvc1 for better compatibility
-                    self.logger.info(
-                        f"🔄 Remuxing '{self.media_file.file_path}' from hev1 to hvc1 (no re-encoding)."
+                    self.logger.debug(
+                        f"🔄 Remuxing '{self.media_file.file_path.name}' from hev1 to hvc1 (no re-encoding)."
                     )
                     sub_args.extend(["copy", "-tag:v", "hvc1"])
                 else:
@@ -161,6 +162,6 @@ class HevcEncoder(PresetCRFEncoder):
 
         self.logger.debug(f"🎬 Prepared video arguments: {video_args.values()}")
         self.logger.info(
-            f'🔹 HEVC encoding initialized for "{color_text(self.media_file.file_name, dim=True)}" | Resolution: {color_text(", ".join(resolution_log), 'cyan')} | Preset: {color_text(", ".join(preset_log), 'cyan')} | CRF: {color_text(", ".join(crf_log), 'cyan')}'
+            f'🔹 HEVC encoding initialized for "{color_text(self.media_file.file_path.name, dim=True)}" | Resolution: {color_text(", ".join(resolution_log), 'cyan')} | Preset: {color_text(", ".join(preset_log), 'cyan')} | CRF: {color_text(", ".join(crf_log), 'cyan')}'
         )
         return video_args

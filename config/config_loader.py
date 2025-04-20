@@ -6,7 +6,6 @@ from .config_definitions import Config
 
 _config: Config = None  # module-level singleton
 
-
 def load_config(path: Optional[str] = None) -> Config:
     global _config
     if _config is not None:
@@ -27,4 +26,5 @@ def load_config(path: Optional[str] = None) -> Config:
         data = yaml.safe_load(f)
 
     _config = from_dict(Config, data, config=DaciteConfig(strict=False))
+    _config.validate()
     return _config

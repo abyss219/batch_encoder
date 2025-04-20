@@ -14,12 +14,12 @@ svt_av1:
   tune: 0
   fast_decode: 1
   preset:
-    4k: 3
-    2k: 3
-    1080p: 3
-    720p: 3
-    480p: 3
-    360p: 3
+    4k: 4
+    2k: 4
+    1080p: 5
+    720p: 5
+    480p: 6
+    360p: 6
   crf:
     4k: 30
     2k: 29
@@ -32,10 +32,10 @@ hevc:
   preset:
     4k: "slow"
     2k: "slow"
-    1080p: "slow"
-    720p: "slow"
-    480p: "slow"
-    360p: "slow"
+    1080p: "medium"
+    720p: "medium"
+    480p: "fast"
+    360p: "fast"
   crf:
     4k: 25
     2k: 24
@@ -55,7 +55,7 @@ libaom_av1:
   preset:
     4k: 4
     2k: 4
-    1080p: 4
-    720p: 4
-    480p: 4
-    360p: 4
+    1080p: 5
+    720p: 5
+    480p: 6
+    360p: 6

@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict
 from pathlib import Path
+from .env import check_env
 
 class EncodingStatus(Enum):
     SKIPPED = (
@@ -23,6 +24,7 @@ RESOLUTION = {
     "360p": 480 * 360,
 }
 
+FFMPEG, FFPROBE = check_env()
 
 @dataclass
 class GeneralConfig:

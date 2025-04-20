@@ -2,7 +2,8 @@ import logging
 from colorlog import ColoredFormatter
 import os
 import sys
-from typing import Optional
+from typing import Optional, Union
+from pathlib import Path
 import re
 
 try:
@@ -124,18 +125,21 @@ class SmartColorFormatter(ColoredFormatter):
 
 
 def setup_logger(
-    log_name: str, log_file: Optional[str] = "logs/default.log", level=logging.INFO
+    log_name: str, log_file: Optional[Union[str, Path]] = "logs/default.log", level=logging.INFO
 ):
     """
     Sets up a logger with file and color-capable console output using colorlog.
     """
+    
+
     logger = logging.getLogger(log_name)
     logger.setLevel(level)
 
     if not logger.hasHandlers():
 
         if log_file:
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            log_file = Path(log_file)
+            log_file.parent.mkdir(parents=True, exist_ok=True)
 
             # File handler (no color)
             file_format = ClearColorFormatter(

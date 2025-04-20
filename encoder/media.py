@@ -1,13 +1,14 @@
 from __future__ import annotations
 from utils import setup_logger
-from config import load_config, RESOLUTION
-from typing import List, Optional
+from config import load_config, RESOLUTION, FFMPEG, FFPROBE
+from typing import List, Optional, Union
 import json
 import subprocess
 import re
 from dataclasses import dataclass, asdict
-import os, sys
+import sys
 import logging
+from pathlib import Path
 
 config = load_config()
 
@@ -121,20 +122,22 @@ class MediaFile:
     Handles media metadata extraction using ffprobe.
 
     Attributes:
-        file_path (str): Path to the media file.
+        file_path (Path): Path to the media file.
         video_info (List[VideoStream]): List of detected video streams.
         audio_info (List[AudioStream]): List of detected audio streams.
-        file_name (str): Name of the media file.
     """
 
-    def __init__(self, file_path: str, debug: bool = False):
+    def __init__(self, file_path: Union[str, Path], debug: bool = False):
         self.logger = setup_logger(
             self.__class__.__name__,
-            os.path.join(config.general.log_dir, "media_file.log"),
+            Path(config.general.log_dir) / "media_file.log",
             logging.DEBUG if debug else logging.INFO,
         )
-        self.file_path: str = file_path
-        self.file_name = os.path.basename(self.file_path)
+        self.file_path = Path(file_path)
+
+        if not self.file_path.is_file():
+            self.logger.error(f"❌ File does not exist or is not a file: {self.file_path}")
+            raise FileNotFoundError(f"'{self.file_path}' is not a valid file path.")
 
         self.logger.debug(f"🔍 Initializing MediaFile for: {file_path}")
 
@@ -156,15 +159,15 @@ class MediaFile:
             float: VMAF score or None if an error occurs.
         """
         self.logger.debug(
-            f"🔍 Comparing {self.file_name} with {other.file_name} using VMAF"
+            f"🔍 Comparing {self.file_path.name} with {other.file_path.name} using VMAF"
         )
 
         cmd = [
-            "ffmpeg",
+            FFMPEG,
             "-i",
-            self.file_path,  # Original Video
+            self.file_path.resolve(),  # Original Video
             "-i",
-            other.file_path,  # Encoded Video
+            other.file_path.resolve(),  # Encoded Video
             "-filter_complex",
             "[0:v][1:v]libvmaf",  # Apply VMAF comparison
             "-f",
@@ -226,7 +229,7 @@ class MediaFile:
             List[VideoStream]: List of valid video streams extracted from the file.
         """
         cmd = [
-            "ffprobe",
+            FFPROBE,
             "-v",
             "error",
             "-select_streams",
@@ -235,7 +238,7 @@ class MediaFile:
             "stream=codec_type,codec_name,tag_string,width,height,r_frame_rate,nb_frames,duration,index,pix_fmt",
             "-of",
             "json",
-            self.file_path,
+            self.file_path.resolve(),
         ]
 
         try:
@@ -320,7 +323,7 @@ class MediaFile:
                         or index is None  # Ensure index exists
                     ):
                         self.logger.warning(
-                            f"❌ Invalid video stream detected for file {self.file_name}: {asdict(stm)}"
+                            f"❌ Invalid video stream detected for file {self.file_path.name}: {asdict(stm)}"
                         )
                     else:
                         video_streams.append(stm)
@@ -349,7 +352,7 @@ class MediaFile:
             List[AudioStream]: List of valid audio streams extracted from the file.
         """
         cmd = [
-            "ffprobe",
+            FFPROBE,
             "-v",
             "error",
             "-select_streams",
@@ -358,7 +361,7 @@ class MediaFile:
             "stream=codec_type,codec_name,index,bit_rate,sample_rate",
             "-of",
             "json",
-            self.file_path,
+            self.file_path.resolve(),
         ]
         index_counter = 0  # FFmpeg assigns 0-based indexes to audio streams
         try:
