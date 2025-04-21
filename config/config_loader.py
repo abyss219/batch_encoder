@@ -1,6 +1,8 @@
 import os
 import yaml
 from typing import Optional
+from pathlib import Path
+from dataclasses import asdict
 from dacite import from_dict, Config as DaciteConfig
 from .config_definitions import Config
 
@@ -20,7 +22,10 @@ def load_config(path: Optional[str] = None) -> Config:
         else:
             _config = Config()
             _config.validate()
-            print("No configuration file found. Using default configuration.")
+
+            default_path = Path("config.yml")
+            with default_path.open("w") as f:
+                yaml.dump(asdict(_config), f, sort_keys=False)
             return _config
 
 
