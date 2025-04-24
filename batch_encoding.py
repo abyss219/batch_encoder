@@ -67,8 +67,6 @@ VIDEO_EXTENSIONS = {
 DEFAULT_MIN_SIZE = "100MB"
 DEFAULT_DENOISE = "none"
 DEFAULT_CODEC = "hevc"
-DEFAULT_FAST_DECODE = 1
-DEFAULT_TUNE = 0
 
 
 def parse_arguments():
@@ -146,7 +144,7 @@ def parse_arguments():
         "--fast-decode",
         type=int,
         choices=[0, 1, 2],
-        default=DEFAULT_FAST_DECODE,
+        default=config.svt_av1.fast_decode,
         help=(
             "Enable fast decode optimizations for AV1:\n"
             "  0 - No optimization (best compression, slowest decoding)\n"
@@ -159,7 +157,7 @@ def parse_arguments():
         "--tune",
         type=int,
         choices=[0, 1, 2],
-        default=DEFAULT_TUNE,
+        default=config.svt_av1.tune,
         help=(
             "Select the tuning metric for encoding quality:\n"
             "  0 - VQ (Visual Quality): Best subjective quality for general use\n"
@@ -171,12 +169,36 @@ def parse_arguments():
     parser.add_argument(
         "--verify",
         action="store_true",
+        default=config.verify.verify,
         help=(
             "Enable verification of encoded file quality using VMAF.\n"
             "If enabled, the script will compare the original and encoded videos\n"
             "and only delete the original if the VMAF score meets the threshold."
         ),
     )
+
+    parser.add_argument(
+        "--check-size",
+        action="store_true",
+        default=config.verify.check_size,
+        help=(
+            "Enable file size check after encoding.\n"
+            "If the encoded video is larger than the original, it will be deleted.\n"
+            "Useful for ensuring that encoding results in actual space savings."
+        ),
+    )
+
+    parser.add_argument(
+        "--delete-origin",
+        action="store_true",
+        default=config.verify.delete_origin,
+        help=(
+            "Replace the original video with the encoded version.\n"
+            "The original file will be deleted only if encoding is successful and passes checks.\n"
+            "Use this to save space after verifying the new file is acceptable."
+        ),
+    )
+
 
     parser.add_argument(
         "--min-resolution",
@@ -196,6 +218,7 @@ def parse_arguments():
             "By default, videos in efficient codecs (HEVC, AV1, VP9, etc.) are skipped."
         ),
     )
+
 
     parser.add_argument(
         "--debug", action="store_true", help="Enable verbose debug logging."
@@ -231,8 +254,8 @@ class BatchEncoder:
         verify: bool = False,
         force_reset: bool = False,
         denoise: str = None,
-        fast_decode: int = DEFAULT_FAST_DECODE,
-        tune: int = DEFAULT_TUNE,
+        fast_decode: int = config.svt_av1.fast_decode,
+        tune: int = config.svt_av1.tune,
         min_resolution: Optional[str] = None,
         force: bool = False,
         debug=False,
@@ -407,10 +430,10 @@ class BatchEncoder:
 
             encoder = CustomEncoding(
                 media_file,
-                delete_original=True,
+                delete_original=args.delete_origin,
                 verify=self.verify,
-                delete_threshold=0,
-                check_size=True,
+                delete_threshold=config.verify.delete_threshold,
+                check_size=args.check_size,
                 denoise=self.denoise,
                 fast_decode=self.fast_decode,
                 tune=self.tune,
@@ -660,6 +683,8 @@ class BatchEncoder:
     @staticmethod
     def format_time(seconds: float) -> str:
         """Convert seconds into a human-readable format including weeks, days, hours, minutes, and seconds."""
+        seconds = round(seconds)
+
         weeks, remainder = divmod(seconds, 604800)  # 604800 seconds in a week
         days, remainder = divmod(remainder, 86400)  # 86400 seconds in a day
         hours, remainder = divmod(remainder, 3600)  # 3600 seconds in an hour

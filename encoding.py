@@ -147,10 +147,33 @@ def parse_arguments():
     parser.add_argument(
         "--verify",
         action="store_true",
+        default=config.verify.verify,
         help=(
             "Verify the encoded file quality using VMAF before deleting the original video.\n"
             "If enabled, the script calculates a VMAF score and only deletes the original\n"
             "if the quality score is above the specified threshold."
+        ),
+    )
+
+    parser.add_argument(
+        "--check-size",
+        action="store_true",
+        default=config.verify.check_size,
+        help=(
+            "Enable file size check after encoding.\n"
+            "If the encoded video is larger than the original, it will be deleted.\n"
+            "Useful for ensuring that encoding results in actual space savings."
+        ),
+    )
+
+    parser.add_argument(
+        "--delete-origin",
+        action="store_true",
+        default=config.verify.delete_origin,
+        help=(
+            "Replace the original video with the encoded version.\n"
+            "The original file will be deleted only if encoding is successful and passes checks.\n"
+            "Use this to save space after verifying the new file is acceptable."
         ),
     )
 
@@ -253,6 +276,7 @@ if __name__ == "__main__":
             delete_original=args.delete_video,
             delete_threshold=args.delete_threshold,
             output_dir=output_dir,
+            check_size = args.check_size,
             debug=args.debug,
         )
     else:
@@ -266,6 +290,7 @@ if __name__ == "__main__":
             delete_original=args.delete_video,
             delete_threshold=args.delete_threshold,
             output_dir=output_dir,
+            check_size = args.check_size,
             debug=args.debug,
         )
 
