@@ -6,7 +6,7 @@ general:
 
 verify:
   delete_threshold: 90.0
-  delete_origin: true
+  delete_origin: false
   verify: false
   check_size: true
 

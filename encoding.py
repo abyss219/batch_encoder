@@ -125,16 +125,6 @@ def parse_arguments():
         ),
     )
 
-    # Optional flag: Delete original file after encoding
-    parser.add_argument(
-        "--delete-video",
-        action="store_true",
-        help=(
-            "Delete the original video file after encoding.\n"
-            "Warning: This action is irreversible."
-        ),
-    )
-
     # Optional argument: Output directory for the encoded file
     parser.add_argument(
         "--output-path",
@@ -273,7 +263,7 @@ if __name__ == "__main__":
             preset=args.preset,
             crf=args.crf,
             verify=args.verify,
-            delete_original=args.delete_video,
+            delete_original=args.delete_origin,
             delete_threshold=args.delete_threshold,
             output_dir=output_dir,
             check_size = args.check_size,
@@ -287,7 +277,7 @@ if __name__ == "__main__":
             fast_decode=args.fast_decode,
             tune=args.tune,
             verify=args.verify,
-            delete_original=args.delete_video,
+            delete_original=args.delete_origin,
             delete_threshold=args.delete_threshold,
             output_dir=output_dir,
             check_size = args.check_size,
