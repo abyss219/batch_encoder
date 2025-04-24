@@ -15,6 +15,7 @@ from encoder.encoders.custom_encoder import get_custom_encoding_class
 
 config = load_config()
 
+VERSION = "1.0.0"
 # Supported video file extensions
 VIDEO_EXTENSIONS = {
     ".mp4",
@@ -222,6 +223,13 @@ def parse_arguments():
 
     parser.add_argument(
         "--debug", action="store_true", help="Enable verbose debug logging."
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {VERSION}",
+        help="Show the version number and exit."
     )
 
     return parser.parse_args()
