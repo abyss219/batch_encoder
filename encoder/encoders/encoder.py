@@ -401,10 +401,12 @@ class CRFEncoder(ABC):
             EncodingStatus: SUCCESS if replacement was successful, FAILED otherwise.
         """
         
-        self.logger.debug(f"🗑️ Deleting original file: {self.media_file.file_path}")
         if self.output_tmp_file.is_file():
             try:
+                self.media_file.file_path.unlink()
+                self.logger.debug(f"🗑️ Deleted original file: {self.media_file.file_path}")
                 self.output_tmp_file.replace(self.new_file_path)
+                self.logger.debug(f"🔁 Replaced {self.output_tmp_file} with {self.new_file_path}")
                 self.output_tmp_file = None
             except (OSError, PermissionError) as e:
                 self.logger.error(
