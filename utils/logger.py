@@ -181,6 +181,27 @@ def setup_logger(
 
 
 def color_text(text: str, color: str = None, bold: bool = False, dim: bool = False):
+    """
+    Wrap a string with optional color and style using ANSI escape codes.
+
+    Args:
+        text (str): The text to style.
+        color (str, optional): One of the supported color names. Defaults to None.
+        bold (bool, optional): Apply bold style. Defaults to False.
+        dim (bool, optional): Apply dim style. Defaults to False.
+
+    Returns:
+        str: Styled text with embedded ANSI escape codes if supported, else original text.
+
+    Supported color names:
+        - red
+        - green
+        - yellow
+        - blue
+        - magenta
+        - cyan
+        - reset (resets to default terminal color)
+    """
     if not isinstance(text, str):
         text = str(text)
     if color is None and not bold and not dim:

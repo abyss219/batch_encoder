@@ -312,6 +312,8 @@ class BatchEncoder:
         self.total_original_size = 0  # for encoded videos only
         self.total_encoded_size = 0
 
+        self.start_time = time.time()
+
         # Set up the logger
         self.debug = debug
         self.logger = setup_logger(
@@ -333,8 +335,7 @@ class BatchEncoder:
         self.initial_queue_size = len(
             self.video_queue
         )  # record the total queue size at the beginning
-        self.start_time = time.time()
-
+        
     @staticmethod
     def hash_directory(directory: str) -> str:
         """
@@ -425,6 +426,7 @@ class BatchEncoder:
 
         while self.video_queue:
             neg_file_size, _, media_file = heapq.heappop(self.video_queue)
+            media_file: MediaFile
 
             original_size = -neg_file_size
             self.logger.info(
@@ -457,9 +459,8 @@ class BatchEncoder:
                 self.logger.debug(encoder.new_file_path)
 
                 self.success_encodings.add(media_file.file_path)
-                if media_file.file_path.is_file():
-                    self.total_encoded_size += media_file.file_path.stat().st_size
-                    self.total_original_size += original_size
+                self.total_encoded_size += encoded_size
+                self.total_original_size += original_size
 
             elif status == EncodingStatus.SKIPPED:
                 log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
@@ -501,8 +502,21 @@ class BatchEncoder:
             final_avg_reduction = 100 * (
                 1 - (self.total_encoded_size / self.total_original_size)
             )
+            self.logger.debug(
+                f"📉 Computed average size reduction across "
+                f"{color_text(len(self.success_encodings), 'cyan')} videos: "
+                f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')} "
+                f"(original total: {color_text(self.total_original_size, 'yellow')} bytes, "
+                f"encoded total: {color_text(self.total_encoded_size, 'green')} bytes)"
+            )
         else:
             final_avg_reduction = 0
+            self.logger.debug(
+                f"📉 {color_text('No average reduction computed.', 'red')} "
+                f"{color_text('Setting final average reduction to 0%.', 'yellow')}\n"
+                f"🔍 {color_text('Successful encodings:', 'cyan')} {color_text(len(self.success_encodings), 'cyan', bold=True)}, "
+                f"{color_text('Total original size:', 'magenta')} {color_text(self.total_original_size, 'magenta', bold=True)} bytes"
+            )
 
         total_time_seconds = time.time() - self.start_time
 
@@ -521,7 +535,7 @@ class BatchEncoder:
             f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')}.\n"
             "💾 Total disk space saved: "
             f"{color_text(CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}.\n"
-            "⌛ Time taken current pass: "
+            "⌛ Time taken: "
             f"{color_text(self.format_time(total_time_seconds), 'blue', bold=True)}"
         )
 
@@ -537,6 +551,7 @@ class BatchEncoder:
             "min_resolution": self.min_resolution,
             "total_original_size": self.total_original_size,
             "total_encoded_size": self.total_encoded_size,
+            "time_elapsed": time.time() - self.start_time
         }
         try:
             with open(self.state_file, "wb") as f:
@@ -563,6 +578,8 @@ class BatchEncoder:
 
                     self.total_original_size = state.get("total_original_size", 0)
                     self.total_encoded_size = state.get("total_encoded_size", 0)
+
+                    self.start_time = time.time() - state.get("time_elapsed", 0)
 
                     if len(self.video_queue) < 1:
                         self.logger.info(
@@ -656,7 +673,7 @@ class BatchEncoder:
         else:
             self.logger.info(
                 color_text(
-                    "❌ No videos were successfully encoded.",
+                    "❌ No videos were successfully encoded.", 'red'
                 )
             )
 
@@ -672,7 +689,7 @@ class BatchEncoder:
         else:
             self.logger.info(
                 color_text(
-                    "⏭️ No videos were skipped.",
+                    "✅ No videos were skipped.", dim=True
                 )
             )
 

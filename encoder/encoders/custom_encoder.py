@@ -226,7 +226,6 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 # Track encoding progress in real-time
                 for line in process.stdout:
                     if use_pbar:
-                        self.logger.debug(f"FFmpeg: {line.strip()}")
                         match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
 
                         if match and len(match.groups()) == 3:
