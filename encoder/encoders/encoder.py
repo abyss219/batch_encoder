@@ -318,7 +318,7 @@ class CRFEncoder(ABC):
         Returns:
             Dict[AudioStream, List[str]]: A mapping of audio streams to their respective FFmpeg arguments.
         """
-        compatible_codecs = {"aac", "mp3", "ac3"}
+        compatible_codecs = {"aac", "alac", "ac3", "eac3", "mp4a"}
         audio_args = {}
 
         for index, audio_stream in enumerate(self.media_file.audio_info):
