@@ -224,7 +224,7 @@ class CRFEncoder(ABC):
             )
             return None
         elif (
-            self.encoder not in video_args_flatten and "hvc1" not in video_args_flatten
+            self.encoder not in video_args_flatten and "hvc1" not in video_args_flatten and all("copy" in s for s in audio_args) # copy appears in every audio string
         ):  # if we copy all streams, just ignore it
             self.logger.debug(
                 f"⚠️ Nothing to encode for file: {self.media_file.file_path} is already in the desired format."
