@@ -394,9 +394,6 @@ class MediaFile:
                     except (ValueError, TypeError):
                         self.logger.debug(f"Unable to fetch audio bit_rate, the value is not an integer {bit_rate}.")
 
-                    if bit_rate:
-                        bit_rate = int(bit_rate) / 1000
-
                     if index:
                         audio_streams.append(
                             AudioStream(
