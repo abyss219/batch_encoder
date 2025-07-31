@@ -294,7 +294,8 @@ class BatchEncoder:
         self.dir_hash = self.hash_directory(directory)  # Generate hash for directory
 
         log_dir = Path(config.general.log_dir)
-        self.log_file = log_dir / f"{self.__class__.__name__}_{self.dir_hash}.log"
+        self.log_filename = f"{self.__class__.__name__}_{self.dir_hash}.log"
+        self.log_file = log_dir / self.log_filename
         self.state_file = log_dir / f"{self.__class__.__name__}_{self.dir_hash}.pkl"
 
         self.denoise = denoise
@@ -384,7 +385,7 @@ class BatchEncoder:
                     self.skipped_videos[file] = log
                     continue
 
-                media_file = MediaFile(file, debug=self.debug)
+                media_file = MediaFile(file, debug=self.debug, log_filename=self.log_filename)
 
                 if self.min_resolution is not None:
                     """Set to True if all video streams are below the resolution threshold, otherwise False."""
@@ -449,6 +450,8 @@ class BatchEncoder:
                 tune=self.tune,
                 ignore_codec=ignore_codec,
                 debug=self.debug,
+                log_filename=self.log_filename,
+                
             )
 
             start_time = time.time()

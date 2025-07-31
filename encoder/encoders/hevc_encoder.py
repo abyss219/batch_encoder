@@ -60,6 +60,7 @@ class HevcEncoder(PresetCRFEncoder):
         output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {"hevc"},
         debug=False,
+        log_filename="encoder.log",
         **kwargs,
     ):
         """
@@ -93,6 +94,7 @@ class HevcEncoder(PresetCRFEncoder):
             output_dir=output_dir,
             ignore_codec=ignore_codec,
             debug=debug,
+            log_filename=log_filename,
         )
 
     def prepare_video_args(self) -> Dict[VideoStream, List[str]]:

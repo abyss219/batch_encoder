@@ -128,10 +128,10 @@ class MediaFile:
         audio_info (List[AudioStream]): List of detected audio streams.
     """
 
-    def __init__(self, file_path: Union[str, Path], debug: bool = False):
+    def __init__(self, file_path: Union[str, Path], debug: bool = False, log_filename="media_file.log"):
         self.logger = setup_logger(
             self.__class__.__name__,
-            Path(config.general.log_dir) / "media_file.log",
+            Path(config.general.log_dir) / log_filename,
             logging.DEBUG if debug else logging.INFO,
         )
         self.file_path = Path(file_path)
@@ -405,7 +405,7 @@ class MediaFile:
                             )
                         )
                     index_counter += 1  # Increment FFmpeg stream index
-
+            
             return audio_streams
 
         except subprocess.CalledProcessError as e:

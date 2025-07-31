@@ -86,6 +86,7 @@ class SVTAV1Encoder(AV1Encoder):
         output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {"av1"},
         debug=False,
+        log_filename="encoder.log",
         **kwargs,
     ):
         """
@@ -142,6 +143,7 @@ class SVTAV1Encoder(AV1Encoder):
             output_dir=output_dir,
             ignore_codec=ignore_codec,
             debug=debug,
+            log_filename=log_filename,
         )
 
         if int(tune) < 0 or int(tune) > 2:

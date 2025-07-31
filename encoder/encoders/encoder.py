@@ -50,6 +50,7 @@ class CRFEncoder(ABC):
         output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {},
         debug=False,
+        log_filename="encoder.log",
     ):
         """
         Initializes the CRFEncoder instance.
@@ -67,9 +68,10 @@ class CRFEncoder(ABC):
 
         self.logger = setup_logger(
             self.__class__.__name__,
-            Path(config.general.log_dir) / "encoder.log",
+            Path(config.general.log_dir) / log_filename,
             logging.DEBUG if debug else logging.INFO,
         )
+        self.log_filename = log_filename
         self.debug = debug
         self.media_file = media_file
         self.encoder = encoder
@@ -357,7 +359,7 @@ class CRFEncoder(ABC):
         if self.verify:
             self.logger.info("🔍 Verifying encoded file integrity with VMAF...")
             try:
-                tmp_media = MediaFile(self.output_tmp_file, debug=self.debug)
+                tmp_media = MediaFile(self.output_tmp_file, debug=self.debug, log_filename=self.log_filename)
             except ValueError:
                 self.logger.warning(
                     "⚠️ The encoded media is corrupted. The original media will not be deleted."
@@ -619,6 +621,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
         output_dir: Optional[Union[str, Path]] = None,
         ignore_codec: Set[str] = {},
         debug=False,
+        log_filename="encoder.log",
     ):
         """
         Initializes the PresetCRFEncoder instance with additional preset options.
@@ -652,6 +655,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
             output_dir=output_dir,
             ignore_codec=ignore_codec,
             debug=debug,
+            log_filename=log_filename,
         )
 
     def _get_filename_suffix(self) -> str:
