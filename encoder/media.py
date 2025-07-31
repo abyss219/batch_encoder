@@ -241,11 +241,15 @@ class MediaFile:
             "json",
             self.file_path.resolve(),
         ]
+        
+        self.logger.debug(f"🔍 Running ffprobe for video stream info: {' '.join(map(str, cmd))}")
 
         try:
             result = subprocess.run(
                 cmd, capture_output=True, check=True, encoding="utf-8"
             )
+            self.logger.debug(f"✅ ffprobe video stdout:\n{result.stdout}")
+            self.logger.debug(f"✅ ffprobe video stderr:\n{result.stderr}")
             info = json.loads(result.stdout)
             video_streams = []
 
@@ -253,6 +257,7 @@ class MediaFile:
 
             if "streams" in info:
                 for stream in info["streams"]:
+                    self.logger.debug(f"🔍 Processing video stream: {stream}")
                     codec_type = stream.get("codec_type")
                     codec = stream.get("codec_name")
                     tag = stream.get("tag_string")
@@ -263,6 +268,7 @@ class MediaFile:
                             try:
                                 stream[key] = int(stream[key])
                             except ValueError:
+                                self.logger.warning(f"⚠️ Failed to convert '{key}' to int: {stream[key]}")
                                 stream[key] = None
 
                     index = stream["index"]  # Used to validate the video stream
@@ -327,9 +333,13 @@ class MediaFile:
                             f"❌ Invalid video stream detected for file {self.file_path.name}: {asdict(stm)}"
                         )
                     else:
+                        self.logger.debug(f"✅ Valid video stream found: {asdict(stm)}")
                         video_streams.append(stm)
 
                     index_counter += 1  # Increment FFmpeg stream index
+
+            if not video_streams:
+                self.logger.debug(f"⚠️ No valid video streams found in: {self.file_path}")
 
             return (
                 video_streams  # Return empty list if no valid video streams are found
@@ -364,16 +374,21 @@ class MediaFile:
             "json",
             self.file_path.resolve(),
         ]
+        self.logger.debug(f"🔍 Running ffprobe for audio stream info: {' '.join(map(str, cmd))}")
+
         index_counter = 0  # FFmpeg assigns 0-based indexes to audio streams
         try:
             result = subprocess.run(
                 cmd, capture_output=True, check=True, encoding="utf-8"
             )
+            self.logger.debug(f"✅ ffprobe audio stdout:\n{result.stdout}")
+            self.logger.debug(f"✅ ffprobe audio stderr:\n{result.stderr}")
             info = json.loads(result.stdout)
             audio_streams = []
 
             if "streams" in info:
                 for stream in info["streams"]:
+                    self.logger.debug(f"🔍 Processing audio stream: {stream}")
                     if stream.get("codec_type") != "audio":
                         continue
 
@@ -384,6 +399,7 @@ class MediaFile:
                             try:
                                 stream[key] = int(stream[key])
                             except ValueError:
+                                self.logger.warning(f"⚠️ Failed to convert '{key}' to int: {stream[key]}")
                                 stream[key] = None
                     index = stream.get("index")
                     bit_rate = stream.get("bit_rate")
@@ -394,18 +410,22 @@ class MediaFile:
                     except (ValueError, TypeError):
                         self.logger.debug(f"Unable to fetch audio bit_rate, the value is not an integer {bit_rate}.")
 
-                    if index:
-                        audio_streams.append(
-                            AudioStream(
+                    if index is not None:
+                        stm = AudioStream(
                                 codec=codec,
                                 ffmpeg_index=index_counter,  # Use FFmpeg's 0-based indexing
                                 index=index,
                                 bit_rate=bit_rate,
                                 sample_rate=sample_rate,
                             )
-                        )
+                        audio_streams.append(stm)
+                        self.logger.debug(f"✅ Valid audio stream found: {asdict(stm)}")
+
                     index_counter += 1  # Increment FFmpeg stream index
-            
+
+            if not audio_streams:
+                self.logger.warning(f"⚠️ No valid audio streams found in: {self.file_path}")
+
             return audio_streams
 
         except subprocess.CalledProcessError as e:
