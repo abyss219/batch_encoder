@@ -274,7 +274,7 @@ class CRFEncoder(ABC):
 
             sub_args = []
             sub_args.extend(video_stream.map_prefix(counter))
-            if video_stream.codec in self.ignore_codec:
+            if video_stream.codec in self.ignore_codec or video_stream.is_metadata:
                 self.logger.debug(
                     f"⚠️ Skipping encoding: An input video stream '{self.media_file.file_path.name}' is already in {video_stream.codec} format."
                 )

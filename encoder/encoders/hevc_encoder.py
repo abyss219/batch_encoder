@@ -125,7 +125,12 @@ class HevcEncoder(PresetCRFEncoder):
             resolution_log.append(video_stream.get_readable_resolution_or_default())
             
             sub_args = []
-            if video_stream.codec in self.ignore_codec:
+            if video_stream.is_metadata:
+                sub_args.extend(video_stream.map_prefix(counter))
+                sub_args.extend(["copy"])
+                preset_log.append("copy")
+                crf_log.append("copy")
+            elif video_stream.codec in self.ignore_codec:
                 # If the codec is already HEVC, copy the stream instead of encoding
                 sub_args.extend(video_stream.map_prefix(counter))
                 if video_stream.tag == "hev1":
@@ -153,6 +158,8 @@ class HevcEncoder(PresetCRFEncoder):
                         "hvc1",  # Ensure proper stream tagging
                         "-crf",
                         self.get_crf(video_stream),
+                        "-pix_fmt",
+                        self.get_pix_fmt(video_stream, self.SUPPORTED_PIXEL_FORMATS),
                     ]
                 )  # Apply CRF
 

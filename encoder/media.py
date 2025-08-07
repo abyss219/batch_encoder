@@ -39,6 +39,7 @@ class VideoStream:
     frame_rate: Optional[float]
     duration: Optional[float]
     pix_fmt: Optional[str]
+    is_metadata: bool
 
     def get_readable_resolution_or_default(
         self,
@@ -293,18 +294,8 @@ class MediaFile:
                         else:
                             frame_rate = None
 
-                    stm = VideoStream(
-                        index=index,
-                        ffmpeg_index=index_counter,  # ffmpeg uses 0 indexing fro both video and audio
-                        codec=codec,
-                        tag=tag,
-                        width=width,
-                        height=height,
-                        frame_rate=frame_rate,
-                        duration=duration,
-                        pix_fmt=pix_fmt,
-                    )
-
+                    is_metadata = False
+                    
                     if (
                         codec_type != "video"
                         or codec
@@ -329,12 +320,29 @@ class MediaFile:
                         or frame_rate == 0  # Invalid frame rate
                         or index is None  # Ensure index exists
                     ):
-                        self.logger.warning(
-                            f"❌ Invalid video stream detected for file {self.file_path.name}: {asdict(stm)}"
-                        )
-                    else:
+                        is_metadata = True
+                    
+                    stm = VideoStream(
+                        index=index,
+                        ffmpeg_index=index_counter,  # ffmpeg uses 0 indexing fro both video and audio
+                        codec=codec,
+                        tag=tag,
+                        width=width,
+                        height=height,
+                        frame_rate=frame_rate,
+                        duration=duration,
+                        pix_fmt=pix_fmt,
+                        is_metadata=is_metadata
+                    )
+                    
+                    if is_metadata:
                         self.logger.debug(f"✅ Valid video stream found: {asdict(stm)}")
-                        video_streams.append(stm)
+                    else:
+                        self.logger.debug(
+                            f"⚠️ Video stream metadata detected for file {self.file_path.name}: {asdict(stm)}"
+                        )
+                    
+                    video_streams.append(stm)
 
                     index_counter += 1  # Increment FFmpeg stream index
 
