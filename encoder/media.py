@@ -457,11 +457,3 @@ class MediaFile:
             )
 
         return []
-
-    def get_num_frames(self) -> int:
-        total_frames = 0
-        for video_stream in self.video_info:
-            if not video_stream.is_metadata and video_stream.num_frames:
-                total_frames += video_stream.num_frames
-        
-        return total_frames
