@@ -329,14 +329,13 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             total_frames = self.get_num_frames()
             self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
             self.logger.debug(f"🎞️ Total frame count: {total_frames}")
-
-            self.logger.info(
-                f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
-            )
             
             mode, pbar = self._find_progress_mode(duration=duration, total_frames=total_frames)
 
             if mode != ProgressMode.NONE:
+                self.logger.info(
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
+                )
                 start_time = time.time()
 
                 # Start FFmpeg encoding process
