@@ -217,7 +217,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     total=round(duration, 2),  # Total duration of the video
                     unit="s",  # Unit is seconds since we're tracking time
                     position=position,
-                    leave=None,
+                    leave=True,
                     dynamic_ncols=True,
                     bar_format="{l_bar}{bar} | {n:.2f}/{total:.2f}s [{elapsed}<{remaining}{postfix}]",
                 )
@@ -229,7 +229,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     total=total_frames,
                     unit="f",
                     position=position,
-                    leave=None,
+                    leave=True,
                     dynamic_ncols=True,
                 )
             else:
@@ -358,6 +358,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                         if not valid:
                             num_invalid += 1
                         if num_invalid >= max_tolerance:
+                            pbar.leave = False
                             pbar.close()
                             mode, pbar = self._find_progress_mode(duration=None, total_frames=total_frames)
                             num_invalid = 0
@@ -367,6 +368,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                             num_invalid += 1
                         if num_invalid >= max_tolerance:
                             mode, pbar = self._find_progress_mode(duration=None, total_frames=0)
+                            pbar.leave = False
                             pbar.close()
                             num_invalid = 0
                     else:
