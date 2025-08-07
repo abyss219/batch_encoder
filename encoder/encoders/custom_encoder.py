@@ -170,7 +170,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     if "copy" not in arg:
                         vf_format = self.get_pix_fmt(stream, self.NLMEANS_PIXEL_FORMATS)
 
-                        vf_format_args = ["-vf", f"format={vf_format},{denoise_args}"]
+                        vf_format_args = [f"-filter:v:{stream.ffmpeg_index}", f"format={vf_format},{denoise_args}"]
 
                         arg.extend(vf_format_args)
                 self.logger.info(f"Applied denoise. level: {denoise_args}")
@@ -216,7 +216,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 # Start FFmpeg encoding process
                 process = subprocess.Popen(
                     ffmpeg_cmd,
-                    stdout=subprocess.PIPE,
+                    stdout=subprocess.PIPE, # DEVNULL
                     stderr=subprocess.DEVNULL,  # Suppress stderr output
                     bufsize=1,  # Line-buffered
                     universal_newlines=True,

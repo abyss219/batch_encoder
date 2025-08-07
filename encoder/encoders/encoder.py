@@ -285,9 +285,9 @@ class CRFEncoder(ABC):
                 sub_args.extend(
                     [
                         self.encoder,
-                        "-crf",
+                        f"-crf:v:{video_stream.ffmpeg_index}",
                         crf,
-                        "-pix_fmt",
+                        f"-pix_fmt:v:{video_stream.ffmpeg_index}",
                         self.get_pix_fmt(video_stream, self.SUPPORTED_PIXEL_FORMATS),
                     ]
                 )
@@ -330,9 +330,9 @@ class CRFEncoder(ABC):
                 sub_arg.extend(["copy"])
             else:
                 if audio_stream.bit_rate:
-                    sub_arg.extend(["aac", "-b:a:0", f"{audio_stream.bit_rate}k"])
+                    sub_arg.extend(["aac", f"-b:a:{audio_stream.ffmpeg_index}", f"{audio_stream.bit_rate}k"])
                 else:
-                    sub_arg.extend(["aac", f"-q:a:{index}", "1"])
+                    sub_arg.extend(["aac", f"-q:a:{audio_stream.ffmpeg_index}", "1"])
 
                 # ffmpeg preserves sample rate by default
             audio_args[audio_stream] = sub_arg
@@ -719,7 +719,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
             if "copy" not in arg:  # Only add preset if the stream is being encoded
                 preset = self.get_preset(stream)
                 arg.extend(
-                    [preset_cmd, preset]
+                    [f"{preset_cmd}:v:{stream.ffmpeg_index}", preset]
                 )  # Append preset option to FFmpeg arguments
                 preset_log.append(preset)
             else:

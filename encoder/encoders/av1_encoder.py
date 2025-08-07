@@ -184,10 +184,10 @@ class SVTAV1Encoder(AV1Encoder):
                 else:
                     fast_decode_args = ""
 
-                append_args = ["-svtav1-params", f"tune={self.tune}{fast_decode_args}"]
+                append_args = [f"-svtav1-params:v:{stream.ffmpeg_index}", f"tune={self.tune}{fast_decode_args}"]
 
                 keyframe_interval = self.get_keyframe_interval(stream, 5)
-                keyframe_interval_args = ["-g", keyframe_interval]
+                keyframe_interval_args = [f"-g:v:{stream.ffmpeg_index}", keyframe_interval]
                 arg.extend(keyframe_interval_args)
                 arg.extend(append_args)
 
@@ -361,9 +361,9 @@ class LibaomAV1Encoder(AV1Encoder):
             if "copy" not in arg:
                 keyint_min = self.get_keyint_min(stream, 10)
                 key_int_args = [
-                    "-g",
+                    f"-g:v:{stream.ffmpeg_index}",
                     self.get_keyframe_interval(stream, 10),
-                    "-keyint_min",
+                    f"-keyint_min:v:{stream.ffmpeg_index}",
                     keyint_min,
                 ]
                 arg.extend(key_int_args)

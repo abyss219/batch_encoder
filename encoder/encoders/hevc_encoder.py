@@ -138,7 +138,7 @@ class HevcEncoder(PresetCRFEncoder):
                     self.logger.debug(
                         f"🔄 Remuxing '{self.media_file.file_path.name}' from hev1 to hvc1 (no re-encoding)."
                     )
-                    sub_args.extend(["copy", "-tag:v", "hvc1"])
+                    sub_args.extend(["copy", f"-tag:v:{video_stream.ffmpeg_index}", "hvc1"])
                 else:
                     # Otherwise, encode using HEVC with preset and CRF settings
                     sub_args.extend(["copy"])
@@ -152,13 +152,13 @@ class HevcEncoder(PresetCRFEncoder):
                 sub_args.extend(
                     [
                         self.encoder,  # Use libx265 encoder
-                        "-preset",
+                        f"-preset:v:{video_stream.ffmpeg_index}",
                         self.get_preset(video_stream),  # Apply preset
-                        "-tag:v",
+                        f"-tag:v:{video_stream.ffmpeg_index}",
                         "hvc1",  # Ensure proper stream tagging
-                        "-crf",
+                        f"-crf:v:{video_stream.ffmpeg_index}",
                         self.get_crf(video_stream),
-                        "-pix_fmt",
+                        f"-pix_fmt:v:{video_stream.ffmpeg_index}",
                         self.get_pix_fmt(video_stream, self.SUPPORTED_PIXEL_FORMATS),
                     ]
                 )  # Apply CRF
