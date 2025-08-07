@@ -36,6 +36,7 @@ class VideoStream:
     tag: Optional[str]
     width: Optional[int]
     height: Optional[int]
+    num_frames: Optional[int]
     frame_rate: Optional[float]
     duration: Optional[float]
     pix_fmt: Optional[str]
@@ -293,6 +294,15 @@ class MediaFile:
                             )
                         else:
                             frame_rate = None
+                    
+                    nb_frames = stream.get("nb_frames")
+                    if nb_frames:
+                        try:
+                            nb_frames = int(nb_frames)
+                        except ValueError as e:
+                            logging.warning(f"⚠️ Failed to convert nb_frames '{nb_frames}' to int: {e}")
+                            nb_frames = None
+                    
 
                     is_metadata = False
                     
@@ -329,6 +339,7 @@ class MediaFile:
                         tag=tag,
                         width=width,
                         height=height,
+                        num_frames=nb_frames,
                         frame_rate=frame_rate,
                         duration=duration,
                         pix_fmt=pix_fmt,
@@ -446,3 +457,11 @@ class MediaFile:
             )
 
         return []
+
+    def get_num_frames(self) -> int:
+        total_frames = 0
+        for video_stream in self.video_info:
+            if not video_stream.is_metadata and video_stream.num_frames:
+                total_frames += video_stream.num_frames
+        
+        return total_frames
