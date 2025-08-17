@@ -7,6 +7,7 @@ import argparse
 import sys
 import time
 import logging
+import os
 from pathlib import Path
 from encoder import *
 from config import load_config, EncodingStatus, RESOLUTION
@@ -352,16 +353,21 @@ class BatchEncoder:
 
     def get_video_files(self) -> List[Path]:
         """
-        Recursively retrieves all video files in the directory.
+        Recursively retrieves all video files in the directory using os.walk.
 
         Returns:
-            List[str]: A list of video file paths.
+            List[Path]: A list of video file paths.
         """
-        video_files = []
-        for path in self.directory.rglob("*"):
-            if path.is_file() and any(path.suffix.lower() == ext for ext in VIDEO_EXTENSIONS):
-                video_files.append(path)
-                self.logger.debug(f"Found video {path.name}")
+        # convert set to tuple so str.endswith() works
+        exts = tuple(ext.lower() for ext in VIDEO_EXTENSIONS)
+        video_files: List[Path] = []
+
+        for dirpath, _, filenames in os.walk(self.directory):
+            for name in filenames:
+                if name.lower().endswith(exts):
+                    p = Path(dirpath) / name
+                    video_files.append(p)
+                    self.logger.debug(f"Found video {p.name}")
 
         return video_files
 
