@@ -334,48 +334,47 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             mode, pbar = self._find_progress_mode(duration=duration, total_frames=total_frames)
 
             if mode != ProgressMode.NONE:
-                with logging_redirect_tqdm():
-                    self.logger.info(
-                        f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
-                    )
-                    start_time = time.time()
+                self.logger.info(
+                    f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
+                )
+                start_time = time.time()
 
-                    # Start FFmpeg encoding process
-                    process = subprocess.Popen(
-                        ffmpeg_cmd,
-                        stdout=subprocess.PIPE, # DEVNULL
-                        stderr=subprocess.DEVNULL,  # Suppress stderr output
-                        bufsize=1,  # Line-buffered
-                        universal_newlines=True,
-                        encoding="utf-8",
-                    )
-                    
-                    max_tolerance = 2 # switch progress mode until 2 invalid matches
-                    num_invalid = 0
-                    
-                    for line in process.stdout:
-                        if mode == ProgressMode.TIME:
-                            valid = self._time_progress_update(pbar, line, start_time)
-                            if not valid:
-                                num_invalid += 1
-                            if num_invalid >= max_tolerance:
-                                pbar.leave = False
-                                pbar.close()
-                                mode, pbar = self._find_progress_mode(duration=None, total_frames=total_frames)
-                                num_invalid = 0
-                        elif mode == ProgressMode.FRAME:
-                            valid = self._frame_progress_update(pbar, line)
-                            if not valid:
-                                num_invalid += 1
-                            if num_invalid >= max_tolerance:
-                                mode, pbar = self._find_progress_mode(duration=None, total_frames=0)
-                                pbar.leave = False
-                                pbar.close()
-                                num_invalid = 0
-                        else:
-                            if pbar is not None:
-                                pbar.close()
-                                pbar = None
+                # Start FFmpeg encoding process
+                process = subprocess.Popen(
+                    ffmpeg_cmd,
+                    stdout=subprocess.PIPE, # DEVNULL
+                    stderr=subprocess.DEVNULL,  # Suppress stderr output
+                    bufsize=1,  # Line-buffered
+                    universal_newlines=True,
+                    encoding="utf-8",
+                )
+                
+                max_tolerance = 2 # switch progress mode until 2 invalid matches
+                num_invalid = 0
+                
+                for line in process.stdout:
+                    if mode == ProgressMode.TIME:
+                        valid = self._time_progress_update(pbar, line, start_time)
+                        if not valid:
+                            num_invalid += 1
+                        if num_invalid >= max_tolerance:
+                            pbar.leave = False
+                            pbar.close()
+                            mode, pbar = self._find_progress_mode(duration=None, total_frames=total_frames)
+                            num_invalid = 0
+                    elif mode == ProgressMode.FRAME:
+                        valid = self._frame_progress_update(pbar, line)
+                        if not valid:
+                            num_invalid += 1
+                        if num_invalid >= max_tolerance:
+                            mode, pbar = self._find_progress_mode(duration=None, total_frames=0)
+                            pbar.leave = False
+                            pbar.close()
+                            num_invalid = 0
+                    else:
+                        if pbar is not None:
+                            pbar.close()
+                            pbar = None
                 
                 process.wait()
                 if pbar is not None:

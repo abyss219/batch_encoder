@@ -5,6 +5,7 @@ import sys
 from typing import Optional, Union
 from pathlib import Path
 import re
+from tqdm import tqdm
 
 try:
     import colorama
@@ -123,6 +124,13 @@ class SmartColorFormatter(ColoredFormatter):
 
         return output
 
+class TqdmWritingHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            tqdm.write(self.format(record))
+            self.flush()
+        except Exception:
+            self.handleError(record)
 
 def setup_logger(
     log_name: str, log_file: Optional[Union[str, Path]] = "logs/default.log", level=logging.INFO
@@ -151,7 +159,7 @@ def setup_logger(
             logger.addHandler(file_handler)
 
         # Console handler (with color if supported and colorlog is available)
-        console_handler = logging.StreamHandler()
+        console_handler = TqdmWritingHandler()
         if COLOR_SUPPORT:
             console_format = SmartColorFormatter(
                 fmt=(
