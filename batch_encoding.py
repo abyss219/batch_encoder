@@ -18,7 +18,7 @@ config = load_config()
 
 VERSION = "1.0.0"
 # Supported video file extensions
-VIDEO_EXTENSIONS = {
+VIDEO_EXTENSIONS = (
     ".mp4",
     ".mkv",
     ".mov",
@@ -63,7 +63,7 @@ VIDEO_EXTENSIONS = {
     ".smil",
     ".wm",
     ".wtv",
-}
+)
 
 # Default settings
 DEFAULT_MIN_SIZE = "100MB"
@@ -359,12 +359,11 @@ class BatchEncoder:
             List[Path]: A list of video file paths.
         """
         # convert set to tuple so str.endswith() works
-        exts = tuple(ext.lower() for ext in VIDEO_EXTENSIONS)
         video_files: List[Path] = []
 
         for dirpath, _, filenames in os.walk(self.directory):
             for name in filenames:
-                if name.lower().endswith(exts):
+                if name.lower().endswith(VIDEO_EXTENSIONS):
                     p = Path(dirpath) / name
                     video_files.append(p)
                     self.logger.debug(f"Found video {p.name}")
