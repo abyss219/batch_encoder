@@ -328,7 +328,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             self.logger.debug(f"🎬 Starting encoding: {self.media_file.file_path}")
             duration = self.get_duration()
             total_frames = self.get_num_frames()
-            self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
+            if duration:
+                self.logger.debug(f"⏱️ Video duration: {duration:.2f} seconds")
             self.logger.debug(f"🎞️ Total frame count: {total_frames}")
             
             mode, pbar = self._find_progress_mode(duration=duration, total_frames=total_frames)
