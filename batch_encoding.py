@@ -1,126 +1,92 @@
-from typing import Union, List, Optional
-import re
-import heapq
-import pickle
-import hashlib
+from __future__ import annotations
+
+from typing import Any, Optional, Type, Union
 import argparse
+import heapq
+import json
+import logging
+import pickle
+import re
 import sys
 import time
-import logging
-import os
 from pathlib import Path
-from encoder import *
+
+from encoder import MediaFile
 from config import load_config, EncodingStatus, RESOLUTION
 from utils import setup_logger, color_text
+from encoder.batch import (
+    BatchInput,
+    discover_batch_input,
+    format_skip_codecs,
+    make_run_id,
+    make_state_id,
+    resolve_skip_codecs,
+)
 from encoder.encoders.custom_encoder import get_custom_encoding_class
+from encoder.encoders.encoder import PresetCRFEncoder
+
 
 config = load_config()
 
-VERSION = "1.0.0"
-# Supported video file extensions
-VIDEO_EXTENSIONS = (
-    ".mp4",
-    ".mkv",
-    ".mov",
-    ".avi",
-    ".flv",
-    ".webm",
-    ".wmv",
-    ".mpg",
-    ".mpeg",
-    ".m4v",
-    ".3gp",
-    ".3g2",
-    ".ts",
-    ".m2ts",
-    ".mts",
-    ".vob",
-    ".ogv",
-    ".rm",
-    ".rmvb",
-    ".divx",
-    ".f4v",
-    ".swf",
-    ".amv",
-    ".asf",
-    ".mxf",
-    ".dv",
-    ".qt",
-    ".yuv",
-    ".mpe",
-    ".mpv",
-    ".m1v",
-    ".m2v",
-    ".svi",
-    ".drc",
-    ".ivf",
-    ".nsv",
-    ".fli",
-    ".flc",
-    ".gxf",
-    ".roq",
-    ".smi",
-    ".smil",
-    ".wm",
-    ".wtv",
+VERSION = "1.1.0"
+STATUS_ORDER = (
+    EncodingStatus.SUCCESS,
+    EncodingStatus.SKIPPED,
+    EncodingStatus.FAILED,
+    EncodingStatus.LOWQUALITY,
+    EncodingStatus.LARGESIZE,
 )
-
-# Default settings
-DEFAULT_MIN_SIZE = "100MB"
-DEFAULT_DENOISE = "none"
-DEFAULT_CODEC = "hevc"
 
 
 def parse_arguments():
     """
     Parses command-line arguments for batch video encoding.
 
-    This function sets up command-line options to control batch encoding of videos using
-    HEVC (H.265) or AV1, with features like resolution-based filtering, quality tuning,
-    verification with VMAF, and multi-threaded optimizations.
-
-    Available options:
-    - Input directory containing videos
-    - Minimum file size threshold for encoding
-    - Codec selection (HEVC or AV1)
-    - Video denoising options
-    - CRF (Constant Rate Factor) control for quality vs. file size
-    - Encoding preset selection for speed vs. compression efficiency
-    - Resolution-based filtering to skip small videos
-    - Fast decode optimization for AV1
-    - Verification of encoded file quality using VMAF
-    - Option to reset encoding progress
-
-    Returns:
-        argparse.Namespace: Parsed arguments containing user-specified values.
+    The input can be either:
+    - A directory, which is scanned recursively for video files.
+    - A text file, where each non-empty, non-comment line is a video path.
+    - A single video file, which is treated as a one-item batch.
     """
     parser = argparse.ArgumentParser(
         description="Batch video encoding script with resume support."
     )
 
     parser.add_argument(
-        "directory", help="Path to the directory containing video files for encoding."
+        "input_path",
+        help="Path to a video directory, a video path list, or a single video file.",
     )
 
     parser.add_argument(
         "--min-size",
-        default=DEFAULT_MIN_SIZE,
+        default=config.batch.min_size,
         help=(
             "Specify the minimum file size for encoding.\n"
             "Example formats: '500MB', '1GB', '200KB'.\n"
             "Videos smaller than this threshold will be skipped.\n"
-            f"Default: {DEFAULT_MIN_SIZE}."
+            f"Default: {config.batch.min_size}."
         ),
     )
 
     parser.add_argument(
         "--codec",
         choices=["hevc", "av1"],
-        default=DEFAULT_CODEC,
+        default=config.batch.codec,
         help=(
             "Choose the codec for encoding:\n"
-            "  hevc - High Efficiency Video Coding (H.265) [default]\n"
+            "  hevc - High Efficiency Video Coding (H.265)\n"
             "  av1  - Next-gen AV1 codec for better compression and efficiency."
+        ),
+    )
+
+    parser.add_argument(
+        "--skip-codecs",
+        nargs="+",
+        default=config.batch.skip_codecs,
+        help=(
+            "Codecs to copy instead of re-encoding. Use 'efficient' for "
+            "av1/hevc/vp9/vvc/theora, 'none' to re-encode all video codecs, "
+            "or pass a comma/space-separated list such as 'hevc' or 'hevc,vp9'. "
+            f"Default: {config.batch.skip_codecs}."
         ),
     )
 
@@ -133,6 +99,7 @@ def parse_arguments():
     parser.add_argument(
         "--denoise",
         choices=["light", "mild", "moderate", "heavy"],
+        default=config.batch.denoise,
         help=(
             "Apply a denoising filter to improve video quality:\n"
             "  light    - Reduces minor noise while preserving details\n"
@@ -163,64 +130,61 @@ def parse_arguments():
         help=(
             "Select the tuning metric for encoding quality:\n"
             "  0 - VQ (Visual Quality): Best subjective quality for general use\n"
-            "  1 - PSNR: Optimizes for peak signal-to-noise ratio (technical evaluation)\n"
-            "  2 - SSIM: Preserves structural details for better perceptual quality"
+            "  1 - PSNR: Optimizes for peak signal-to-noise ratio\n"
+            "  2 - SSIM: Preserves structural details for perceptual quality"
         ),
     )
 
     parser.add_argument(
         "--verify",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=config.verify.verify,
         help=(
-            "Enable verification of encoded file quality using VMAF.\n"
-            "If enabled, the script will compare the original and encoded videos\n"
-            "and only delete the original if the VMAF score meets the threshold."
+            "Enable or disable VMAF verification. If enabled, the script compares "
+            "the original and encoded videos before deleting the original."
         ),
     )
 
     parser.add_argument(
         "--check-size",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=config.verify.check_size,
         help=(
-            "Enable file size check after encoding.\n"
-            "If the encoded video is larger than the original, it will be deleted.\n"
-            "Useful for ensuring that encoding results in actual space savings."
+            "Enable or disable file size checks after encoding. If enabled, larger "
+            "encoded videos are removed and reported as LARGESIZE."
         ),
     )
 
     parser.add_argument(
         "--delete-origin",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=config.verify.delete_origin,
         help=(
-            "Replace the original video with the encoded version.\n"
-            "The original file will be deleted only if encoding is successful and passes checks.\n"
-            "Use this to save space after verifying the new file is acceptable."
+            "Enable or disable replacing the original video with the encoded video. "
+            "The original is removed only after successful checks."
         ),
     )
 
+    parser.add_argument(
+        "--delete-threshold",
+        type=lambda x: (
+            float(x)
+            if 0 <= float(x) <= 100
+            else argparse.ArgumentTypeError("Threshold must be between 0 and 100.")
+        ),
+        default=config.verify.delete_threshold,
+        help="Minimum VMAF score required to delete the original video.",
+    )
 
     parser.add_argument(
         "--min-resolution",
         choices=["4k", "2k", "1080p", "720p", "480p", "360p"],
+        default=config.batch.min_resolution,
         help=(
             "Set the minimum resolution threshold for encoding.\n"
-            "Videos with lower resolutions will be skipped.\n"
-            "Options: 4k, 2k, 1080p, 720p, 480p, 360p."
+            "Videos with lower resolutions will be skipped."
         ),
     )
-
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help=(
-            "Force encoding of all videos, even if they are already in the desired codec.\n"
-            "By default, videos in efficient codecs (HEVC, AV1, VP9, etc.) are skipped."
-        ),
-    )
-
 
     parser.add_argument(
         "--debug", action="store_true", help="Enable verbose debug logging."
@@ -230,7 +194,7 @@ def parse_arguments():
         "--version",
         action="version",
         version=f"%(prog)s {VERSION}",
-        help="Show the version number and exit."
+        help="Show the version number and exit.",
     )
 
     return parser.parse_args()
@@ -238,412 +202,582 @@ def parse_arguments():
 
 class BatchEncoder:
     """
-    Handles batch video encoding for an entire directory with resume support.
+    Handles batch video encoding with resume support.
 
-    This class automates the process of encoding videos using HEVC (H.265) or AV1,
-    providing features such as:
-    - Recursive file discovery
-    - Resolution-based filtering
-    - State saving for resume support
-    - Multi-threaded prioritization of larger videos first
-    - Automatic skipping of already encoded files
-    - Encoding verification using VMAF
-    - Custom denoising options
-
-    It prioritizes larger videos using a max heap to maximize storage savings efficiently.
+    The class intentionally keeps encoding behavior inside the existing encoder
+    classes. BatchEncoder owns input discovery, queueing, state, logs, and reports.
     """
-
-    # List of efficient codecs that do not require re-encoding
-    EFFICIENT_CODEC = {"av1", "hevc", "vp9", "vvc", "theora"}
 
     def __init__(
         self,
-        directory: Union[str, Path],
-        min_size: Union[str, float] = DEFAULT_MIN_SIZE,
-        verify: bool = False,
+        batch_input: BatchInput,
+        encoding_class: Type[PresetCRFEncoder],
+        codec: str,
+        min_size: Union[str, float] = config.batch.min_size,
+        verify: bool = config.verify.verify,
+        check_size: bool = config.verify.check_size,
+        delete_origin: bool = config.verify.delete_origin,
+        delete_threshold: float = config.verify.delete_threshold,
         force_reset: bool = False,
-        denoise: str = None,
+        denoise: Optional[str] = None,
         fast_decode: int = config.svt_av1.fast_decode,
         tune: int = config.svt_av1.tune,
         min_resolution: Optional[str] = None,
-        force: bool = False,
-        debug=False,
+        skip_codecs: Optional[set[str]] = None,
+        debug: bool = False,
     ):
-        """
-        Initializes the BatchEncoder instance.
-
-        Args:
-            directory (str): The directory containing video files to be encoded.
-            min_size (Union[str, float]): Minimum file size threshold for encoding.
-                                          Videos smaller than this value are skipped.
-            verify (bool): Whether to verify encoded video quality using VMAF before deleting originals.
-            force_reset (bool): If True, resets encoding progress and starts fresh.
-            denoise (str): Denoising filter level ('light', 'mild', 'moderate', 'heavy') or None.
-            fast_decode (int): Fast decode setting for AV1 (0, 1, or 2).
-            tune (int): AV1 tuning metric (0 = VQ, 1 = PSNR, 2 = SSIM).
-            min_resolution (Optional[str]): Minimum resolution threshold (e.g., '720p').
-                                            Videos below this are skipped.
-            force (bool): If True, encodes all videos, even if they are already in an efficient codec.
-        """
-        self.directory = Path(directory)
-        if not self.directory.is_dir():
-            raise ValueError(
-                f"The input to {self.__class__.__name__} must be a directory"
-            )
+        self.batch_input = batch_input
+        self.encoding_class = encoding_class
+        self.codec = codec
         self.min_size = min_size
         self.min_size_bytes = self.parse_size(min_size)
-        self.dir_hash = self.hash_directory(directory)  # Generate hash for directory
-
-        log_dir = Path(config.general.log_dir)
-        self.log_filename = f"{self.__class__.__name__}_{self.dir_hash}.log"
-        self.log_file = log_dir / self.log_filename
-        self.state_file = log_dir / f"{self.__class__.__name__}_{self.dir_hash}.pkl"
-
-        self.denoise = denoise
         self.verify = verify
+        self.check_size = check_size
+        self.delete_origin = delete_origin
+        self.delete_threshold = delete_threshold
+        self.denoise = denoise
         self.fast_decode = str(fast_decode)
         self.tune = str(tune)
         self.min_resolution = min_resolution
-        self.force = force
-
-        self.video_queue = []
-        self.success_encodings = set()  # Stores successfully encoded videos
-        self.failed_encodings = set()  # Stores videos that failed encoding
-        self.skipped_videos = {}  # Stores videos that were skipped and their reason
-
-        self.total_original_size = 0  # for encoded videos only
-        self.total_encoded_size = 0
-
-        self.start_time = time.time()
-
-        # Set up the logger
+        self.skip_codecs = set(
+            skip_codecs if skip_codecs is not None else resolve_skip_codecs(config.batch.skip_codecs)
+        )
         self.debug = debug
+
+        self.run_id = make_run_id(batch_input)
+        self.state_id = make_state_id(
+            batch_input=batch_input,
+            codec=codec,
+            min_size=str(min_size),
+            min_resolution=min_resolution,
+            skip_codecs=self.skip_codecs,
+        )
+
+        log_dir = Path(config.general.log_dir)
+        self.log_filename = f"batch_encoder_{self.run_id}.log"
+        self.log_file = log_dir / self.log_filename
+        self.report_file = log_dir / f"batch_encoder_{self.run_id}_summary.json"
+        self.state_file = log_dir / f"batch_encoder_state_{self.state_id}.pkl"
+
         self.logger = setup_logger(
             self.__class__.__name__,
             self.log_file,
             logging.DEBUG if debug else logging.INFO,
         )
-        self.logger.debug(f"Initializing BatchEncoder for directory: {directory}")
 
-        # Load previous state if applicable
+        self.video_queue: list[tuple[int, str]] = []
+        self.results: dict[str, dict[str, dict[str, Any]]] = self._empty_results()
+        self.total_original_size = 0
+        self.total_encoded_size = 0
+        self.start_time = time.time()
+
+        self.logger.info(
+            f"Run ID: {color_text(self.run_id, 'cyan', bold=True)} | "
+            f"Input: {color_text(self.batch_input.source_path, dim=True)} | "
+            f"Mode: {color_text(self.batch_input.kind, 'cyan')} | "
+            f"Skip codecs: {color_text(format_skip_codecs(self.skip_codecs), 'yellow')}"
+        )
+        self.logger.debug(f"State file: {self.state_file}")
+        self.logger.debug(f"Report file: {self.report_file}")
+
         if not force_reset and self.load_state():
-            self.logger.debug(f"Resuming previous encoding session for {directory}.")
+            self.logger.info(
+                f"Resumed encoding session for {color_text(self.batch_input.source_path, dim=True)}."
+            )
         else:
             self.reset_state()
             self.prepare_video_queue()
 
         self.save_state()
+        self.write_report()
 
-        self.initial_queue_size = len(
-            self.video_queue
-        )  # record the total queue size at the beginning
-        
-    @staticmethod
-    def hash_directory(directory: str) -> str:
-        """
-        Generate a short hash for the directory path.
+        self.initial_queue_size = len(self.video_queue)
 
-        Args:
-            directory (str): Path of the directory to hash.
+    def _empty_results(self) -> dict[str, dict[str, dict[str, Any]]]:
+        return {status.name: {} for status in STATUS_ORDER}
 
-        Returns:
-            str: An 8-character hash representing the directory.
-        """
-        return hashlib.md5(directory.encode()).hexdigest()[:8]  # Short hash
-
-    def get_video_files(self) -> List[Path]:
-        """
-        Recursively retrieves all video files in the directory using os.walk.
-
-        Returns:
-            List[Path]: A list of video file paths.
-        """
-        # convert set to tuple so str.endswith() works
-        video_files: List[Path] = []
-
-        for dirpath, _, filenames in os.walk(self.directory):
-            for name in filenames:
-                if name.lower().endswith(VIDEO_EXTENSIONS):
-                    p = Path(dirpath) / name
-                    video_files.append(p)
-                    self.logger.debug(f"Found video {p.name}")
-
-        return video_files
+    def get_video_files(self) -> list[Path]:
+        self.logger.debug(
+            f"Input discovery returned {len(self.batch_input.video_paths)} unique paths."
+        )
+        return list(self.batch_input.video_paths)
 
     def prepare_video_queue(self):
         """
-        Scans the directory and prepares a priority queue for encoding, prioritizing larger files.
-        Skips files that have already been processed.
+        Prepares a priority queue for encoding, prioritizing larger files.
         """
         video_files = self.get_video_files()
-        temp_queue = []
+        temp_queue: list[tuple[int, str]] = []
+        processed_paths = self.processed_paths
 
         for file in video_files:
-            if file in self.success_encodings or file in self.failed_encodings:
-                continue  # Skip already processed files
+            path_key = str(file)
+            if path_key in processed_paths:
+                continue
 
             try:
-                file_size = file.stat().st_size
-                if file_size < self.min_size_bytes:
-                    log = f"Skipping {file} (Size: {CustomEncoding.human_readable_size(file_size)}) - Below threshold of {self.min_size}."
-                    self.logger.debug(log)
-                    self.skipped_videos[file] = log
+                if not file.is_file():
+                    self.record_result(
+                        EncodingStatus.SKIPPED,
+                        file,
+                        reason="Input path does not exist or is not a file.",
+                    )
                     continue
 
-                media_file = MediaFile(file, debug=self.debug, log_filename=self.log_filename)
-
-                if self.min_resolution is not None:
-                    """Set to True if all video streams are below the resolution threshold, otherwise False."""
-                    skip_resolution = all(
-                        video_stream.width
-                        and video_stream.height
-                        and (
-                            video_stream.width * video_stream.height
-                            < RESOLUTION.get(self.min_resolution, 0)
-                        )
-                        for video_stream in media_file.video_info
+                file_size = file.stat().st_size
+                if file_size < self.min_size_bytes:
+                    self.record_result(
+                        EncodingStatus.SKIPPED,
+                        file,
+                        reason=(
+                            f"Below minimum size threshold of {self.min_size} "
+                            f"(actual: {self.encoding_class.human_readable_size(file_size)})."
+                        ),
+                        original_size=file_size,
                     )
+                    continue
 
-                    if skip_resolution:
-                        log = (
-                            f"Skipping {file} "
-                            f"- All video streams are below threshold of {self.min_resolution}."
-                        )
-                        self.logger.debug(log)
-                        self.skipped_videos[file] = log
-                        continue
+                media_file = MediaFile(
+                    file, debug=self.debug, log_filename=self.log_filename
+                )
 
-                temp_queue.append(
-                    (-file_size, media_file.file_path, media_file)
-                )  # Max heap (largest size first)
+                if self.min_resolution is not None and self.should_skip_resolution(media_file):
+                    self.record_result(
+                        EncodingStatus.SKIPPED,
+                        file,
+                        reason=(
+                            f"All video streams are below threshold of {self.min_resolution}."
+                        ),
+                        original_size=file_size,
+                    )
+                    continue
+
+                temp_queue.append((-file_size, str(media_file.file_path)))
+                self.logger.debug(f"Queued video {media_file.file_path.name}")
             except ValueError:
-                self.logger.warning(f"Skipping {file}, not a valid video.")
+                self.record_result(
+                    EncodingStatus.SKIPPED,
+                    file,
+                    reason="Not a valid video file.",
+                )
             except Exception as e:
-                self.logger.error(f"Error processing {file}: {e}")
+                self.record_result(
+                    EncodingStatus.FAILED,
+                    file,
+                    reason=f"Error preparing video: {e}",
+                )
 
-        heapq.heapify(temp_queue)  # More efficient than pushing one by one
+        heapq.heapify(temp_queue)
         self.video_queue = temp_queue
-        self.logger.info(f"Prepared {color_text(len(self.video_queue), 'cyan', bold=True)} videos for encoding.")
+        self.logger.info(
+            f"Prepared {color_text(len(self.video_queue), 'cyan', bold=True)} videos for encoding."
+        )
+
+    def should_skip_resolution(self, media_file: MediaFile) -> bool:
+        return all(
+            video_stream.width
+            and video_stream.height
+            and (
+                video_stream.width * video_stream.height
+                < RESOLUTION.get(self.min_resolution, 0)
+            )
+            for video_stream in media_file.video_info
+        )
 
     def encode_videos(self):
         """
         Processes the video queue, encoding videos in priority order.
         """
-
         while self.video_queue:
-            neg_file_size, _, media_file = heapq.heappop(self.video_queue)
-            media_file: MediaFile
-
+            neg_file_size, file_path = heapq.heappop(self.video_queue)
+            path = Path(file_path)
             original_size = -neg_file_size
+
             self.logger.info(
-                f"🎥 Encoding {color_text(media_file.file_path.name, dim=True)} of size "
-                f"{color_text(CustomEncoding.human_readable_size(original_size), 'yellow')}, "
-                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')} / {color_text(self.initial_queue_size, 'cyan', bold=True)} "
-                f"videos have been processed."
-            )
-
-            ignore_codec = {} if self.force else self.EFFICIENT_CODEC
-
-            encoder = CustomEncoding(
-                media_file,
-                delete_original=args.delete_origin,
-                verify=self.verify,
-                delete_threshold=config.verify.delete_threshold,
-                check_size=args.check_size,
-                denoise=self.denoise,
-                fast_decode=self.fast_decode,
-                tune=self.tune,
-                ignore_codec=ignore_codec,
-                debug=self.debug,
-                log_filename=self.log_filename,
-                
+                f"🎥 Encoding {color_text(path.name, dim=True)} of size "
+                f"{color_text(self.encoding_class.human_readable_size(original_size), 'yellow')}, "
+                f"{color_text(self.initial_queue_size - len(self.video_queue), 'magenta')} / "
+                f"{color_text(self.initial_queue_size, 'cyan', bold=True)} videos have been processed."
             )
 
             start_time = time.time()
-            status = encoder.encode_wrapper()
-
-            if status == EncodingStatus.SUCCESS:
-                encoded_size = encoder.new_file_path.stat().st_size
-                self.logger.debug(encoder.new_file_path)
-
-                self.success_encodings.add(media_file.file_path)
-                self.total_encoded_size += encoded_size
-                self.total_original_size += original_size
-
-            elif status == EncodingStatus.SKIPPED:
-                log = f"⏭️ Skipping encoding: {media_file.file_path} (Already in desired format)."
-                self.skipped_videos[media_file.file_path] = log
-
-            elif (
-                status == EncodingStatus.FAILED
-            ):  # the encoded file will be automatically removed
-                self.failed_encodings.add(media_file.file_path)
-                self.logger.warning(f"❌ Encoding failed for {media_file.file_path}.")
-            elif status == EncodingStatus.LOWQUALITY:
-                self.logger.warning(
-                    f"❌ The encoded video {color_text(media_file.file_path.name, dim=True)} has been deleted."
+            try:
+                media_file = MediaFile(path, debug=self.debug, log_filename=self.log_filename)
+                encoder = self.encoding_class(
+                    media_file,
+                    delete_original=self.delete_origin,
+                    verify=self.verify,
+                    delete_threshold=self.delete_threshold,
+                    check_size=self.check_size,
+                    denoise=self.denoise,
+                    fast_decode=self.fast_decode,
+                    tune=self.tune,
+                    skip_codecs=self.skip_codecs,
+                    debug=self.debug,
+                    log_filename=self.log_filename,
                 )
-                encoder._delete_encoded()
-                pass
-            elif status == EncodingStatus.LARGESIZE:
-                size_log = "(Unknown size change)"
 
-                if encoder.output_tmp_file.is_file():
-                    encoded_size = encoder.output_tmp_file.stat().st_size
-                    size_log = (
-                        CustomEncoding.human_readable_size(original_size)
-                        + " → "
-                        + CustomEncoding.human_readable_size(encoded_size)
-                    )
-                    encoder._delete_encoded()
+                status = encoder.encode_wrapper()
+                self.handle_status(
+                    status=status,
+                    path=media_file.file_path,
+                    encoder=encoder,
+                    original_size=original_size,
+                    duration_seconds=time.time() - start_time,
+                )
+            except Exception as e:
+                self.logger.exception(e)
+                self.record_result(
+                    EncodingStatus.FAILED,
+                    path,
+                    reason=f"Unexpected batch error: {e}",
+                    original_size=original_size,
+                    duration_seconds=time.time() - start_time,
+                )
 
-                log = f"❌ Encoding skipped for {media_file.file_path} due to large size {color_text(size_log, 'magenta')}. The encoded video has been deleted."
-                self.skipped_videos[media_file.file_path] = log
-                self.logger.warning(log)
-
-            self.logger.info(f"🕐 Encoding took {color_text(self.format_time(time.time()-start_time), 'cyan')}")
-
-            self.save_state()  # Save state in case of failure
-
-        # Calculate final average reduction
-        if len(self.success_encodings) > 0 and self.total_original_size > 0:
-            final_avg_reduction = 100 * (
-                1 - (self.total_encoded_size / self.total_original_size)
+            self.logger.info(
+                f"🕐 Encoding took {color_text(self.format_time(time.time() - start_time), 'cyan')}"
             )
-            self.logger.debug(
-                f"📉 Computed average size reduction across "
-                f"{color_text(len(self.success_encodings), 'cyan')} videos: "
-                f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')} "
-                f"(original total: {color_text(self.total_original_size, 'yellow')} bytes, "
-                f"encoded total: {color_text(self.total_encoded_size, 'green')} bytes)"
-            )
-        else:
-            final_avg_reduction = 0
-            self.logger.debug(
-                f"📉 {color_text('No average reduction computed.', 'red')} "
-                f"{color_text('Setting final average reduction to 0%.', 'yellow')}\n"
-                f"🔍 {color_text('Successful encodings:', 'cyan')} {color_text(len(self.success_encodings), 'cyan', bold=True)}, "
-                f"{color_text('Total original size:', 'magenta')} {color_text(self.total_original_size, 'magenta', bold=True)} bytes"
-            )
-
-        total_time_seconds = time.time() - self.start_time
+            self.save_state()
+            self.write_report()
 
         self.log_final_results()
+        self.write_report()
 
-        self.logger.info(
-            color_text("\n" + "-" * 50 + "\n", dim=True)
-            + f"📊 All tasks finished for directory {color_text(self.directory, 'cyan')}\n"
-            "✅ Successful: "
-            f"{color_text(str(len(self.success_encodings)), 'cyan', bold=True)}, "
-            "❌ Failed: "
-            f"{color_text(str(len(self.failed_encodings)), 'red', bold=True)}, "
-            "⏭️ Skipped: "
-            f"{color_text(str(len(self.skipped_videos)), 'yellow', bold=True)}.\n"
-            "📉 Final average size reduction: "
-            f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')}.\n"
-            "💾 Total disk space saved: "
-            f"{color_text(CustomEncoding.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}.\n"
-            "⌛ Time taken: "
-            f"{color_text(self.format_time(total_time_seconds), 'blue', bold=True)}"
-        )
+    def handle_status(
+        self,
+        status: EncodingStatus,
+        path: Path,
+        encoder: PresetCRFEncoder,
+        original_size: int,
+        duration_seconds: float,
+    ):
+        if status == EncodingStatus.SUCCESS:
+            encoded_size = self.safe_file_size(encoder.new_file_path)
+            self.total_original_size += original_size
+            self.total_encoded_size += encoded_size or 0
+            self.record_result(
+                EncodingStatus.SUCCESS,
+                path,
+                reason="Encoding completed successfully.",
+                output_path=encoder.new_file_path,
+                original_size=original_size,
+                encoded_size=encoded_size,
+                duration_seconds=duration_seconds,
+            )
+        elif status == EncodingStatus.SKIPPED:
+            self.record_result(
+                EncodingStatus.SKIPPED,
+                path,
+                reason="Already in a codec configured by --skip-codecs.",
+                original_size=original_size,
+                duration_seconds=duration_seconds,
+            )
+        elif status == EncodingStatus.FAILED:
+            self.record_result(
+                EncodingStatus.FAILED,
+                path,
+                reason="Encoding failed.",
+                original_size=original_size,
+                duration_seconds=duration_seconds,
+            )
+            self.logger.warning(f"❌ Encoding failed for {path}.")
+        elif status == EncodingStatus.LOWQUALITY:
+            output_path = encoder.output_tmp_file
+            encoded_size = self.safe_file_size(output_path)
+            self.record_result(
+                EncodingStatus.LOWQUALITY,
+                path,
+                reason="Encoded video did not meet the VMAF quality threshold.",
+                output_path=output_path,
+                original_size=original_size,
+                encoded_size=encoded_size,
+                duration_seconds=duration_seconds,
+            )
+            encoder._delete_encoded()
+            self.logger.warning(
+                f"❌ LOWQUALITY for {color_text(path.name, dim=True)}. Encoded video deleted."
+            )
+        elif status == EncodingStatus.LARGESIZE:
+            output_path = encoder.output_tmp_file
+            encoded_size = self.safe_file_size(output_path)
+            size_log = self.format_size_change(original_size, encoded_size)
+            self.record_result(
+                EncodingStatus.LARGESIZE,
+                path,
+                reason=f"Encoded video is larger than the original ({size_log}).",
+                output_path=output_path,
+                original_size=original_size,
+                encoded_size=encoded_size,
+                duration_seconds=duration_seconds,
+            )
+            encoder._delete_encoded()
+            self.logger.warning(
+                f"❌ LARGESIZE for {path}: {color_text(size_log, 'magenta')}. Encoded video deleted."
+            )
+
+    def record_result(
+        self,
+        status: EncodingStatus,
+        path: Path,
+        reason: str,
+        **metadata: Any,
+    ):
+        path_key = str(path)
+        for bucket in self.results.values():
+            bucket.pop(path_key, None)
+
+        entry = {
+            "path": path_key,
+            "reason": reason,
+        }
+        for key, value in metadata.items():
+            entry[key] = self.json_safe(value)
+
+        entry["status"] = status.name
+        entry["status_value"] = status.value
+
+        self.results[status.name][path_key] = entry
+
+        if status == EncodingStatus.SKIPPED:
+            self.logger.debug(f"Skipping {path}: {reason}")
+        else:
+            self.logger.debug(f"Recorded {status.name} for {path}: {reason}")
+
+    @property
+    def processed_paths(self) -> set[str]:
+        processed: set[str] = set()
+        for bucket in self.results.values():
+            processed.update(bucket.keys())
+        return processed
 
     def save_state(self):
-        """Save the current encoding state to a file."""
         state = {
-            "directory": self.directory,
-            "success_encodings": self.success_encodings,
-            "failed_encodings": self.failed_encodings,
-            "skipped_videos": self.skipped_videos,
-            "video_queue": self.video_queue,
+            "input_path": str(self.batch_input.source_path),
+            "input_kind": self.batch_input.kind,
+            "codec": self.codec,
+            "skip_codecs": sorted(self.skip_codecs),
             "min_size": self.min_size,
             "min_resolution": self.min_resolution,
+            "results": self.results,
+            "video_queue": self.video_queue,
             "total_original_size": self.total_original_size,
             "total_encoded_size": self.total_encoded_size,
-            "time_elapsed": time.time() - self.start_time
+            "time_elapsed": time.time() - self.start_time,
         }
         try:
-            with open(self.state_file, "wb") as f:
+            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.state_file.open("wb") as f:
                 pickle.dump(state, f)
             self.logger.debug("State saved successfully.")
         except Exception as e:
             self.logger.error(f"Failed to save state: {e}")
 
     def load_state(self) -> bool:
-        """Load the previous encoding state if available, reset if directory has changed."""
-        if self.state_file.is_file():
-            try:
-                with open(self.state_file, "rb") as f:
-                    state = pickle.load(f)
-
-                if state.get("directory") == self.directory:
-                    self.success_encodings = state.get("success_encodings", set())
-                    self.failed_encodings = state.get("failed_encodings", set())
-                    self.skipped_videos = state.get("skipped_videos", {})
-                    self.video_queue = state.get("video_queue", [])
-
-                    min_size = state.get("min_size", DEFAULT_MIN_SIZE)
-                    min_resolution = state.get("min_resolution", None)
-
-                    self.total_original_size = state.get("total_original_size", 0)
-                    self.total_encoded_size = state.get("total_encoded_size", 0)
-
-                    self.start_time = time.time() - state.get("time_elapsed", 0)
-
-                    if len(self.video_queue) < 1:
-                        self.logger.info(
-                            f"Previous encoding has finished or hasn't started. Restarting for {color_text(self.directory, dim=True)}."
-                        )
-                        return False
-                    elif (
-                        min_size != self.min_size
-                        or min_resolution != self.min_resolution
-                    ):
-                        self.logger.info(
-                            "Current encoding session has different parameters than saved encoding session.\n"
-                            f"  - min_size:       got {color_text(min_size, 'cyan', bold=True)}, passed {color_text(self.min_size, 'magenta')}\n"
-                            f"  - min_resolution: got {color_text(min_resolution, 'cyan', bold=True)}, passed {color_text(self.min_resolution, 'magenta')}\n"
-                            f"Restarting for: {color_text(self.directory, dim=True)}"
-                        )
-                        return False
-
-                    self.logger.info(f"Resumed encoding session for {color_text(self.directory, dim=True)}.")
-                    return True
-                else:
-                    self.logger.warning(
-                        f"Directory has changed from {color_text(state.get('directory'), 'cyan', dim=True)} to {color_text(self.directory, 'magenta', bold=True)}. Resetting state."
-                    )
-            except Exception as e:
-                self.logger.error(f"Failed to load state")
-                self.logger.exception(e)
-        else:
+        if not self.state_file.is_file():
             self.logger.info(
-                f"No previous encoding session found for {self.directory}."
+                f"No previous encoding session found for {self.batch_input.source_path}."
             )
-        return False
+            return False
+
+        try:
+            with self.state_file.open("rb") as f:
+                state = pickle.load(f)
+
+            if not self.state_matches_current_run(state):
+                self.logger.info("Saved encoding session has different parameters. Restarting.")
+                return False
+
+            self.results = self.normalize_results(state.get("results", {}))
+            self.video_queue = state.get("video_queue", [])
+            heapq.heapify(self.video_queue)
+            self.total_original_size = state.get("total_original_size", 0)
+            self.total_encoded_size = state.get("total_encoded_size", 0)
+            self.start_time = time.time() - state.get("time_elapsed", 0)
+
+            if not self.video_queue:
+                self.logger.info(
+                    f"Previous encoding has finished or has no remaining queue. Restarting for {color_text(self.batch_input.source_path, dim=True)}."
+                )
+                return False
+
+            return True
+        except Exception as e:
+            self.logger.error("Failed to load state")
+            self.logger.exception(e)
+            return False
+
+    def state_matches_current_run(self, state: dict[str, Any]) -> bool:
+        return (
+            state.get("input_path") == str(self.batch_input.source_path)
+            and state.get("input_kind") == self.batch_input.kind
+            and state.get("codec") == self.codec
+            and state.get("skip_codecs") == sorted(self.skip_codecs)
+            and state.get("min_size") == self.min_size
+            and state.get("min_resolution") == self.min_resolution
+        )
+
+    def normalize_results(
+        self, saved_results: dict[str, dict[str, dict[str, Any]]]
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        results = self._empty_results()
+        for status in STATUS_ORDER:
+            for key in (status.name, status.value):
+                bucket = saved_results.get(key, {})
+                for path, entry in bucket.items():
+                    entry = dict(entry)
+                    entry["status"] = status.name
+                    entry["status_value"] = status.value
+                    results[status.name][path] = entry
+        return results
 
     def reset_state(self):
-        """Reset the encoding state if the directory has changed."""
-        self.success_encodings.clear()
-        self.failed_encodings.clear()
-        self.skipped_videos.clear()
+        self.results = self._empty_results()
         self.video_queue.clear()
-
         self.total_original_size = 0
         self.total_encoded_size = 0
-
-        self.save_state()  # Save the reset state
-        open(self.log_file, "w").close()  # Clear file
+        self.save_state()
         self.logger.info("Encoding state reset.")
+
+    def write_report(self):
+        report = {
+            "run_id": self.run_id,
+            "state_id": self.state_id,
+            "input": {
+                "path": str(self.batch_input.source_path),
+                "kind": self.batch_input.kind,
+                "label": self.batch_input.label,
+                "target_hash": self.batch_input.target_hash,
+                "discovered_paths": len(self.batch_input.video_paths),
+            },
+            "options": {
+                "codec": self.codec,
+                "min_size": self.min_size,
+                "min_resolution": self.min_resolution,
+                "denoise": self.denoise,
+                "verify": self.verify,
+                "check_size": self.check_size,
+                "delete_origin": self.delete_origin,
+                "delete_threshold": self.delete_threshold,
+                "skip_codecs": format_skip_codecs(self.skip_codecs),
+                "fast_decode": self.fast_decode,
+                "tune": self.tune,
+            },
+            "files": {
+                "log": str(self.log_file),
+                "state": str(self.state_file),
+                "report": str(self.report_file),
+            },
+            "counts": self.result_counts(),
+            "totals": {
+                "successful_original_size": self.total_original_size,
+                "successful_encoded_size": self.total_encoded_size,
+                "successful_disk_saved": self.total_original_size - self.total_encoded_size,
+                "elapsed_seconds": round(time.time() - self.start_time, 3),
+            },
+            "results": {
+                status.name: list(self.results[status.name].values())
+                for status in STATUS_ORDER
+            },
+        }
+
+        try:
+            self.report_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.report_file.open("w", encoding="utf-8") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            self.logger.error(f"Failed to write report: {e}")
+
+    def log_final_results(self):
+        total_time_seconds = time.time() - self.start_time
+        final_avg_reduction = self.final_average_reduction()
+
+        self.logger.info(color_text("==== Encoding Process Detail ====", dim=True))
+        self.logger.info(
+            f"Input: {color_text(self.batch_input.source_path, 'cyan')} "
+            f"({self.batch_input.kind})"
+        )
+        self.logger.info(
+            f"Run ID: {color_text(self.run_id, 'cyan', bold=True)} | "
+            f"Report: {color_text(self.report_file, dim=True)}"
+        )
+
+        for status in STATUS_ORDER:
+            entries = list(self.results[status.name].values())
+            label = self.status_label(status)
+            self.logger.info(
+                f"{label}: {color_text(str(len(entries)), self.status_color(status), bold=True)}"
+            )
+            for entry in entries:
+                reason = entry.get("reason", "")
+                self.logger.info(
+                    f"  - {color_text(entry['path'], dim=True)} | {reason}"
+                )
+
+        self.logger.info(
+            "📉 Final average size reduction: "
+            f"{color_text(f'{final_avg_reduction:.2f}%', 'magenta')}."
+        )
+        self.logger.info(
+            "💾 Total disk space saved: "
+            f"{color_text(self.encoding_class.human_readable_size(self.total_original_size - self.total_encoded_size), 'magenta', bold=True)}."
+        )
+        self.logger.info(
+            f"⌛ Time taken: {color_text(self.format_time(total_time_seconds), 'blue', bold=True)}"
+        )
+        self.logger.info(color_text("====================================", dim=True))
+
+    def result_counts(self) -> dict[str, int]:
+        return {status.name: len(self.results[status.name]) for status in STATUS_ORDER}
+
+    def final_average_reduction(self) -> float:
+        if self.total_original_size <= 0:
+            return 0.0
+        return 100 * (1 - (self.total_encoded_size / self.total_original_size))
+
+    def safe_file_size(self, path: Optional[Path]) -> Optional[int]:
+        if path is None:
+            return None
+        try:
+            return path.stat().st_size if path.is_file() else None
+        except OSError:
+            return None
+
+    def format_size_change(self, original_size: int, encoded_size: Optional[int]) -> str:
+        original = self.encoding_class.human_readable_size(original_size)
+        if encoded_size is None:
+            return f"{original} -> unknown"
+        encoded = self.encoding_class.human_readable_size(encoded_size)
+        return f"{original} -> {encoded}"
+
+    def json_safe(self, value: Any) -> Any:
+        if isinstance(value, Path):
+            return str(value)
+        return value
+
+    @staticmethod
+    def status_label(status: EncodingStatus) -> str:
+        return {
+            EncodingStatus.SUCCESS: "✅ SUCCESS",
+            EncodingStatus.SKIPPED: "⏭️ SKIPPED",
+            EncodingStatus.FAILED: "❌ FAILED",
+            EncodingStatus.LOWQUALITY: "📉 LOWQUALITY",
+            EncodingStatus.LARGESIZE: "📦 LARGESIZE",
+        }[status]
+
+    @staticmethod
+    def status_color(status: EncodingStatus) -> str:
+        return {
+            EncodingStatus.SUCCESS: "cyan",
+            EncodingStatus.SKIPPED: "yellow",
+            EncodingStatus.FAILED: "red",
+            EncodingStatus.LOWQUALITY: "magenta",
+            EncodingStatus.LARGESIZE: "magenta",
+        }[status]
 
     @staticmethod
     def parse_size(size: Union[str, float]) -> int:
-        """
-        Convert human-readable file sizes (e.g., "1GB", "500MB", "200KB") into bytes.
-
-        :param size: File size in human-readable format (string) or numeric bytes (float).
-        :return: Size in bytes (int).
-        """
-        if isinstance(size, (int, float)):  # If already in bytes
+        if isinstance(size, (int, float)):
             return int(size)
 
         size = size.strip().lower()
@@ -656,72 +790,14 @@ class BatchEncoder:
 
         raise ValueError(f"Invalid size format: {size}")
 
-    def log_final_results(self):
-        """Log the final encoding summary including success, failure, skipped videos,
-        total processed, average size reduction, and total encoding time."""
-
-        self.logger.info(color_text("==== Encoding Process Detail ====", dim=True))
-
-        total_processed = (
-            len(self.success_encodings)
-            + len(self.failed_encodings)
-            + len(self.skipped_videos)
-        )
-
-        # ✅ Log total processed files
-        self.logger.info(
-            f"Total Processed Videos: {color_text(str(total_processed), 'blue', bold=True)}"
-        )
-
-        # ✅ Log successfully encoded videos
-        if self.success_encodings:
-            self.logger.info(
-                f"✅ Successfully Encoded: {color_text(str(len(self.success_encodings)), 'cyan', bold=True)} videos."
-            )
-        else:
-            self.logger.info(
-                color_text(
-                    "❌ No videos were successfully encoded.", 'red'
-                )
-            )
-
-        # ✅ Log skipped videos with reasons
-        if self.skipped_videos:
-            self.logger.info(
-                f"⏭️ Skipped: {color_text(str(len(self.skipped_videos)), 'yellow', bold=True)} videos:"
-            )
-            for file_path, reason in self.skipped_videos.items():
-                self.logger.info(
-                    f"  - {color_text(file_path, dim=True)} | Reason: {color_text(reason, 'reset', dim=True)}"
-                )
-        else:
-            self.logger.info(
-                color_text(
-                    "✅ No videos were skipped.", dim=True
-                )
-            )
-
-        # ✅ Log failed encodings
-        if self.failed_encodings:
-            self.logger.info(
-                f"❌ Failed: {color_text(str(len(self.failed_encodings)), 'red', bold=True)} encodings:"
-            )
-            for file_path in self.failed_encodings:
-                self.logger.warning(f"  - {color_text(file_path, 'yellow', dim=True)}")
-        else:
-            self.logger.info(color_text("✅ No failed encodings.", dim=True))
-
-        self.logger.info(color_text("====================================", dim=True))
-
     @staticmethod
     def format_time(seconds: float) -> str:
-        """Convert seconds into a human-readable format including weeks, days, hours, minutes, and seconds."""
         seconds = round(seconds)
 
-        weeks, remainder = divmod(seconds, 604800)  # 604800 seconds in a week
-        days, remainder = divmod(remainder, 86400)  # 86400 seconds in a day
-        hours, remainder = divmod(remainder, 3600)  # 3600 seconds in an hour
-        minutes, seconds = divmod(remainder, 60)  # 60 seconds in a minute
+        weeks, remainder = divmod(seconds, 604800)
+        days, remainder = divmod(remainder, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
 
         formatted_time = []
 
@@ -739,38 +815,37 @@ class BatchEncoder:
         return ", ".join(formatted_time)
 
 
-if __name__ == "__main__":
+def main() -> int:
     args = parse_arguments()
 
-    if not Path(args.directory).is_dir():
-        print("Error: input argument not a directory.")
-        sys.exit(1)
+    try:
+        batch_input = discover_batch_input(args.input_path)
+        skip_codecs = resolve_skip_codecs(args.skip_codecs)
+        encoding_class = get_custom_encoding_class(args.codec)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
-    CustomEncoding = get_custom_encoding_class(args.codec)
-
-    if args.codec == "hevc":
-        encoder = BatchEncoder(
-            directory=args.directory,
-            min_size=args.min_size,
-            force_reset=args.force_reset,
-            verify=args.verify,
-            min_resolution=args.min_resolution,
-            denoise=args.denoise,
-            force=args.force,
-            debug=args.debug,
-        )
-    else:
-        encoder = BatchEncoder(
-            directory=args.directory,
-            min_size=args.min_size,
-            force_reset=args.force_reset,
-            denoise=args.denoise,
-            verify=args.verify,
-            min_resolution=args.min_resolution,
-            fast_decode=args.fast_decode,
-            tune=args.tune,
-            force=args.force,
-            debug=args.debug,
-        )
-
+    encoder = BatchEncoder(
+        batch_input=batch_input,
+        encoding_class=encoding_class,
+        codec=args.codec,
+        min_size=args.min_size,
+        force_reset=args.force_reset,
+        denoise=args.denoise,
+        verify=args.verify,
+        check_size=args.check_size,
+        delete_origin=args.delete_origin,
+        delete_threshold=args.delete_threshold,
+        min_resolution=args.min_resolution,
+        fast_decode=args.fast_decode,
+        tune=args.tune,
+        skip_codecs=skip_codecs,
+        debug=args.debug,
+    )
     encoder.encode_videos()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 from pathlib import Path
 from .env import check_env
 
@@ -83,6 +83,34 @@ class VerificationConfig:
             raise TypeError("verify must be a boolean")
         if not isinstance(self.check_size, bool):
             raise TypeError("check_size must be a boolean")
+
+@dataclass
+class BatchConfig:
+    """Defaults for batch encoding CLI behavior."""
+
+    codec: str = "hevc"
+    min_size: str = "100MB"
+    min_resolution: Optional[str] = None
+    denoise: Optional[str] = None
+    skip_codecs: str = "efficient"
+
+    def validate(self):
+        if self.codec not in {"hevc", "av1"}:
+            raise ValueError("batch.codec must be one of: hevc, av1")
+
+        if self.min_resolution is not None and self.min_resolution not in RESOLUTION:
+            raise ValueError(f"Unsupported batch.min_resolution: {self.min_resolution}")
+
+        if self.denoise is not None and self.denoise not in {
+            "light",
+            "mild",
+            "moderate",
+            "heavy",
+        }:
+            raise ValueError("batch.denoise must be one of: light, mild, moderate, heavy")
+
+        if not isinstance(self.skip_codecs, str):
+            raise TypeError("batch.skip_codecs must be a string")
 
 @dataclass
 class SVTAV1Config:
@@ -217,6 +245,7 @@ class Config:
 
     general: GeneralConfig = field(default_factory=GeneralConfig)
     verify: VerificationConfig = field(default_factory=VerificationConfig)
+    batch: BatchConfig = field(default_factory=BatchConfig)
     svt_av1: SVTAV1Config = field(default_factory=SVTAV1Config)
     hevc: HEVCConfig = field(default_factory=HEVCConfig)
     libaom_av1: LibAomAV1Config = field(default_factory=LibAomAV1Config)
@@ -224,6 +253,7 @@ class Config:
     def validate(self):
         self.general.validate()
         self.verify.validate()
+        self.batch.validate()
         self.svt_av1.validate()
         self.hevc.validate()
         self.libaom_av1.validate()

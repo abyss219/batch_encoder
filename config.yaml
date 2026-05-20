@@ -10,6 +10,13 @@ verify:
   verify: false
   check_size: true
 
+batch:
+  codec: "hevc"
+  min_size: "100MB"
+  min_resolution:
+  denoise:
+  skip_codecs: "efficient"
+
 svt_av1:
   tune: 0
   fast_decode: 1

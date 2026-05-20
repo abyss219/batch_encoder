@@ -48,7 +48,8 @@ class CRFEncoder(ABC):
         delete_threshold: float = config.verify.delete_threshold,
         check_size: bool = config.verify.check_size,
         output_dir: Optional[Union[str, Path]] = None,
-        ignore_codec: Set[str] = {},
+        skip_codecs: Optional[Set[str]] = None,
+        ignore_codec: Optional[Set[str]] = None,
         debug=False,
         log_filename="encoder.log",
     ):
@@ -63,7 +64,7 @@ class CRFEncoder(ABC):
             verify (bool, optional): Whether to verify encoding quality with VMAF. Defaults to DEFAULT_VERIFY.
             delete_threshold (float, optional): Minimum acceptable VMAF score for deletion. Defaults to DEFAULT_DELETE_THRESHOLD.
             output_dir (Optional[Union[str, Path]], optional): Directory for output files. Defaults to None (same directory as media_file).
-            ignore_codec (Set[str], optional): Set of codecs to be copied without re-encoding. Defaults to an empty set.
+            skip_codecs (Set[str], optional): Set of codecs to be copied without re-encoding. Defaults to an empty set.
         """
 
         self.logger = setup_logger(
@@ -81,7 +82,9 @@ class CRFEncoder(ABC):
         self.check_size = check_size
         self.verify = verify
         self.output_dir = Path(output_dir) if output_dir else media_file.file_path.parent  # Set output directory
-        self.ignore_codec = ignore_codec
+        if skip_codecs is None:
+            skip_codecs = ignore_codec if ignore_codec is not None else set()
+        self.skip_codecs = set(skip_codecs)
 
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -252,7 +255,7 @@ class CRFEncoder(ABC):
         """
         Prepares video encoding arguments for FFmpeg.
 
-        - If the video codec is already compatible and present in `ignore_codec`, it will be copied instead of re-encoded.
+        - If the video codec is already compatible and present in `skip_codecs`, it will be copied instead of re-encoded.
         - Otherwise, the specified CRF value is used for encoding along with the appropriate pixel format.
 
         Steps:
@@ -274,7 +277,7 @@ class CRFEncoder(ABC):
 
             sub_args = []
             sub_args.extend(video_stream.map_prefix(counter))
-            if video_stream.codec in self.ignore_codec or video_stream.is_metadata:
+            if video_stream.codec in self.skip_codecs or video_stream.is_metadata:
                 self.logger.debug(
                     f"⚠️ Skipping encoding: An input video stream '{self.media_file.file_path.name}' is already in {video_stream.codec} format."
                 )
@@ -619,7 +622,8 @@ class PresetCRFEncoder(CRFEncoder, ABC):
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
         output_dir: Optional[Union[str, Path]] = None,
-        ignore_codec: Set[str] = {},
+        skip_codecs: Optional[Set[str]] = None,
+        ignore_codec: Optional[Set[str]] = None,
         debug=False,
         log_filename="encoder.log",
     ):
@@ -638,7 +642,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
             verify (bool, optional): Whether to verify encoding quality with VMAF. Defaults to DEFAULT_VERIFY.
             delete_threshold (float, optional): Minimum VMAF score required to allow deletion of the original file. Defaults to DEFAULT_DELETE_THRESHOLD.
             output_dir (Optional[str], optional): The directory for output files. Defaults to None (same as the input file).
-            ignore_codec (Set[str], optional): Set of codecs that should not be re-encoded. Defaults to an empty set.
+            skip_codecs (Set[str], optional): Set of codecs that should not be re-encoded. Defaults to an empty set.
         """
         self.preset = str(preset) if preset else preset
         self.crf = str(crf) if crf else crf
@@ -653,6 +657,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
             delete_threshold=delete_threshold,
             check_size=check_size,
             output_dir=output_dir,
+            skip_codecs=skip_codecs,
             ignore_codec=ignore_codec,
             debug=debug,
             log_filename=log_filename,
@@ -696,7 +701,7 @@ class PresetCRFEncoder(CRFEncoder, ABC):
         """
         Prepares video encoding arguments for FFmpeg, including CRF and preset settings.
 
-        - If the video codec is in `ignore_codec`, it is copied without re-encoding.
+        - If the video codec is in `skip_codecs`, it is copied without re-encoding.
         - Otherwise, encoding is performed using CRF and the specified preset.
 
         Steps:

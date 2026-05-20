@@ -94,7 +94,8 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             delete_original: bool = True,
             check_size: bool = True,
             verify: bool = False,
-            ignore_codec: Set = {},
+            skip_codecs: Optional[Set[str]] = None,
+            ignore_codec: Optional[Set[str]] = None,
             **kwargs,
         ):
             """
@@ -108,7 +109,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 delete_original (bool): If True, deletes the original file after encoding. Default is True.
                 check_size (bool): If True, checks if the encoded file is smaller before deleting the original.
                 verify (bool): If True, performs a verification check after encoding. Default is False.
-                ignore_codec (Set[str]): Codecs that should not be re-encoded.
+                skip_codecs (Set[str]): Codecs that should not be re-encoded.
                 **kwargs: Additional parameters passed to the base encoder class.
             """
             super().__init__(
@@ -116,6 +117,7 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                 delete_original=delete_original,
                 check_size=check_size,
                 verify=verify,
+                skip_codecs=skip_codecs,
                 ignore_codec=ignore_codec,
                 **kwargs,
             )
@@ -253,9 +255,12 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             """
             if "out_time=N/A" in line:
                 return False
-            
-            match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
-            
+
+            match = re.search(
+                r"(?:out_time|time)=(\d+):(\d+):(\d+(?:\.\d+)?)",
+                line,
+            )
+
             if match and len(match.groups()) == 3:
                 try:
                     hours, minutes, seconds = map(float, match.groups())

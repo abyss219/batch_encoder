@@ -84,7 +84,8 @@ class SVTAV1Encoder(AV1Encoder):
         verify: bool = config.verify.verify,
         delete_threshold: float = config.verify.delete_threshold,
         output_dir: Optional[Union[str, Path]] = None,
-        ignore_codec: Set[str] = {"av1"},
+        skip_codecs: Optional[Set[str]] = None,
+        ignore_codec: Optional[Set[str]] = None,
         debug=False,
         log_filename="encoder.log",
         **kwargs,
@@ -119,9 +120,12 @@ class SVTAV1Encoder(AV1Encoder):
             delete_threshold (float): Minimum acceptable VMAF score to allow deletion of the original file.
             output_dir (Optional[str]): Directory for storing encoded files.
                 - Defaults to the same directory as the input file.
-            ignore_codec (Set[str]): Codecs that should be skipped for re-encoding.
+            skip_codecs (Set[str]): Codecs that should be skipped for re-encoding.
                 - Defaults to ignoring AV1 streams to prevent redundant encoding.
         """
+        if skip_codecs is None and ignore_codec is None:
+            skip_codecs = {"av1"}
+
         if crf:
             crf = max(1, min(int(crf), 63))  # Clamp between 1-63
         if preset:
@@ -141,6 +145,7 @@ class SVTAV1Encoder(AV1Encoder):
             delete_threshold=delete_threshold,
             check_size=check_size,
             output_dir=output_dir,
+            skip_codecs=skip_codecs,
             ignore_codec=ignore_codec,
             debug=debug,
             log_filename=log_filename,
@@ -257,7 +262,8 @@ class LibaomAV1Encoder(AV1Encoder):
         delete_threshold: float = config.verify.delete_threshold,
         check_size: bool = config.verify.check_size,
         output_dir: Optional[str] = None,
-        ignore_codec: Set[str] = {"av1"},
+        skip_codecs: Optional[Set[str]] = None,
+        ignore_codec: Optional[Set[str]] = None,
         debug=False,
         **kwargs,
     ):
@@ -283,7 +289,7 @@ class LibaomAV1Encoder(AV1Encoder):
             delete_threshold (float, optional): Minimum VMAF score required to allow deletion of the original file.
             check_size (bool, optional): Whether to check if the encoded file is smaller than the original before deletion.
             output_dir (Optional[str], optional): Directory for storing encoded files.
-            ignore_codec (Set[str], optional): Codecs that should be skipped for re-encoding.
+            skip_codecs (Set[str], optional): Codecs that should be skipped for re-encoding.
                 - Defaults to ignoring AV1 streams to prevent redundant encoding.
 
         Raises:
@@ -292,6 +298,9 @@ class LibaomAV1Encoder(AV1Encoder):
             ValueError: If `delete_threshold` is not between 0 and 100.
 
         """
+        if skip_codecs is None and ignore_codec is None:
+            skip_codecs = {"av1"}
+
         if crf:
             crf = max(1, min(int(crf), 63))  # Clamp between 0-63
         if preset:
@@ -309,6 +318,7 @@ class LibaomAV1Encoder(AV1Encoder):
             delete_threshold=delete_threshold,
             check_size=check_size,
             output_dir=output_dir,
+            skip_codecs=skip_codecs,
             ignore_codec=ignore_codec,
             debug=debug,
         )

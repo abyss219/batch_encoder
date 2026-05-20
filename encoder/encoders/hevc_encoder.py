@@ -58,7 +58,8 @@ class HevcEncoder(PresetCRFEncoder):
         delete_threshold: float = config.verify.delete_threshold,
         check_size: bool = config.verify.check_size,
         output_dir: Optional[Union[str, Path]] = None,
-        ignore_codec: Set[str] = {"hevc"},
+        skip_codecs: Optional[Set[str]] = None,
+        ignore_codec: Optional[Set[str]] = None,
         debug=False,
         log_filename="encoder.log",
         **kwargs,
@@ -78,9 +79,12 @@ class HevcEncoder(PresetCRFEncoder):
             delete_threshold (float, optional): Minimum VMAF score required for deletion. Defaults to DEFAULT_DELETE_THRESHOLD.
             check_size (bool, optional): Whether to check if the encoded file is smaller than the original. Defaults to DEFAULT_CHECK_SIZE.
             output_dir (Optional[str], optional): The directory for output files. Defaults to None (same as input file).
-            ignore_codec (Set[str], optional): Set of codecs that should not be re-encoded. Defaults to {"hevc"}.
+            skip_codecs (Set[str], optional): Set of codecs that should not be re-encoded. Defaults to {"hevc"}.
             **kwargs: Additional keyword arguments passed to the superclass.
         """
+        if skip_codecs is None and ignore_codec is None:
+            skip_codecs = {"hevc"}
+
         # Calls the parent class constructor with 'libx265' as the encoder
         super().__init__(
             media_file,
@@ -92,6 +96,7 @@ class HevcEncoder(PresetCRFEncoder):
             verify=verify,
             delete_threshold=delete_threshold,
             output_dir=output_dir,
+            skip_codecs=skip_codecs,
             ignore_codec=ignore_codec,
             debug=debug,
             log_filename=log_filename,
@@ -130,7 +135,7 @@ class HevcEncoder(PresetCRFEncoder):
                 sub_args.extend(["copy"])
                 preset_log.append("copy")
                 crf_log.append("copy")
-            elif video_stream.codec in self.ignore_codec:
+            elif video_stream.codec in self.skip_codecs:
                 # If the codec is already HEVC, copy the stream instead of encoding
                 sub_args.extend(video_stream.map_prefix(counter))
                 if video_stream.tag == "hev1":

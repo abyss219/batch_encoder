@@ -138,27 +138,36 @@ def setup_logger(
     """
     Sets up a logger with file and color-capable console output using colorlog.
     """
-    
-
     logger = logging.getLogger(log_name)
     logger.setLevel(level)
+    logger.propagate = False
 
-    if not logger.hasHandlers():
+    file_format = ClearColorFormatter(
+        "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
+    )
 
-        if log_file:
-            log_file = Path(log_file)
-            log_file.parent.mkdir(parents=True, exist_ok=True)
+    if log_file:
+        log_file = Path(log_file)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        desired_log_file = str(log_file.resolve(strict=False))
 
-            # File handler (no color)
-            file_format = ClearColorFormatter(
-                "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
-            )
+        has_current_file_handler = False
+        for handler in list(logger.handlers):
+            if isinstance(handler, logging.FileHandler):
+                if handler.baseFilename == desired_log_file:
+                    has_current_file_handler = True
+                    handler.setLevel(level)
+                else:
+                    logger.removeHandler(handler)
+                    handler.close()
+
+        if not has_current_file_handler:
             file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
             file_handler.setFormatter(file_format)
-            file_handler.setLevel(logging.INFO)
+            file_handler.setLevel(level)
             logger.addHandler(file_handler)
 
-        # Console handler (with color if supported and colorlog is available)
+    if not any(isinstance(handler, TqdmWritingHandler) for handler in logger.handlers):
         console_handler = TqdmWritingHandler()
         if COLOR_SUPPORT:
             console_format = SmartColorFormatter(
@@ -184,6 +193,10 @@ def setup_logger(
         console_handler.setFormatter(console_format)
         console_handler.setLevel(logging.DEBUG)
         logger.addHandler(console_handler)
+    else:
+        for handler in logger.handlers:
+            if isinstance(handler, TqdmWritingHandler):
+                handler.setLevel(logging.DEBUG)
 
     return logger
 

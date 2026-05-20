@@ -273,15 +273,17 @@ class MediaFile:
                                 self.logger.warning(f"⚠️ Failed to convert '{key}' to int: {stream[key]}")
                                 stream[key] = None
 
-                    index = stream["index"]  # Used to validate the video stream
-                    width = stream["width"]
-                    height = stream["height"]
+                    index = stream.get("index")  # Used to validate the video stream
+                    width = stream.get("width")
+                    height = stream.get("height")
 
                     duration = stream.get("duration")
 
                     pix_fmt = stream.get("pix_fmt")
 
                     # Extract frame rate from string format (e.g., "30000/1001")
+                    frame_rate = None
+                    frame_match = None
                     frame_rate_str = stream.get("r_frame_rate")
                     if frame_rate_str:
                         frame_match = re.match(r"(\d+)/(\d+)", frame_rate_str)
@@ -300,7 +302,7 @@ class MediaFile:
                         try:
                             nb_frames = int(nb_frames)
                         except ValueError as e:
-                            logging.warning(f"⚠️ Failed to convert nb_frames '{nb_frames}' to int: {e}")
+                            self.logger.warning(f"⚠️ Failed to convert nb_frames '{nb_frames}' to int: {e}")
                             nb_frames = None
                     
 
@@ -347,11 +349,11 @@ class MediaFile:
                     )
                     
                     if is_metadata:
-                        self.logger.debug(f"✅ Valid video stream found: {asdict(stm)}")
-                    else:
                         self.logger.debug(
                             f"⚠️ Video stream metadata detected for file {self.file_path.name}: {asdict(stm)}"
                         )
+                    else:
+                        self.logger.debug(f"✅ Valid video stream found: {asdict(stm)}")
                     
                     video_streams.append(stm)
 
