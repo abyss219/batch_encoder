@@ -9,6 +9,8 @@ log/
 logs/*
 log/*
 .log
+.cache/
+tests/fixtures/media/
 
 # Virtual environment
 venv/
@@ -16,6 +18,8 @@ venv/
 
 # IDE / Editor
 .vscode/
+!.vscode/
+!.vscode/launch.json
 .idea/
 *.sublime-workspace
 
@@ -68,3 +72,8 @@ pip-wheel-metadata/
 *.swf
 
 /test*
+!/tests/
+!/tests/**
+/tests/fixtures/media/
+tests/**/__pycache__/
+tests/**/*.py[cod]

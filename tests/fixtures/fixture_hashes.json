@@ -1,0 +1,1514 @@
+{
+  "alpha_qtrle_mov": {
+    "path": "generated/alpha_qtrle.mov",
+    "sha256": "5983f5fa0e01d3ac11569ef2f72801d9215f1fa0551fd16625e60f55f03223b8",
+    "size": 1974,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1974",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "qtrle"
+      ],
+      "video_pix_fmts": [
+        "argb"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "anamorphic_h264_mp4": {
+    "path": "generated/anamorphic_h264_sar_4_3.mp4",
+    "sha256": "be70c62e261abebbb2e28ec3273c55629e23fde157e87d4b113e85eac749d020",
+    "size": 70071,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "4:3"
+      ],
+      "size": "70071",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "attached_pic_mp4": {
+    "path": "generated/attached_picture.mp4",
+    "sha256": "b8b93b09ad74e93dc1f4ae984778f117f8e79e3eab8bf8ac3e13c50b0fc7d83a",
+    "size": 111333,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [
+        "bt470bg"
+      ],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "111333",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264",
+        "mjpeg"
+      ],
+      "video_pix_fmts": [
+        "yuv420p",
+        "yuvj420p"
+      ],
+      "video_profiles": [
+        "Baseline",
+        "Constrained Baseline"
+      ],
+      "video_streams": 2
+    }
+  },
+  "av1_opus_mkv": {
+    "path": "generated/av1_opus_1s.mkv",
+    "sha256": "5628e95a3e9afbc670fe864796efcdde7f682db5222355c940defbe4aa19843a",
+    "size": 15683,
+    "streams": {
+      "audio_codecs": [
+        "opus"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.008000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "15683",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "av1"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "dnxhr_mxf": {
+    "path": "generated/dnxhr_lb.mxf",
+    "sha256": "6213688197fed13922975bdf63224328707b4ce5e4112ee41c0c5ca7a3c5be34",
+    "size": 2096173,
+    "streams": {
+      "audio_codecs": [
+        "pcm_s16le"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [
+        "bt709"
+      ],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "2096173",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "dnxhd"
+      ],
+      "video_pix_fmts": [
+        "yuv422p"
+      ],
+      "video_profiles": [
+        "DNXHR LB"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_avi_bad_mp3_rate": {
+    "path": "external/ffmpeg/ffmp3_bad_rate_detection.avi",
+    "sha256": "89a456ecf58228d08391826a9dd4588b4e210a927e879815d43a3b80263b729d",
+    "size": 256000,
+    "streams": {
+      "audio_codecs": [
+        "mp3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.711042",
+      "field_orders": [],
+      "sample_aspect_ratios": [],
+      "size": "256000",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "msmpeg4v3"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_avi_two_audio": {
+    "path": "external/ffmpeg/2-audio-streams.avi",
+    "sha256": "7859cafbb0a0d3d61abc322a37b237088296a434c514a158d9d513407493f0c6",
+    "size": 3145728,
+    "streams": {
+      "audio_codecs": [
+        "mp3"
+      ],
+      "audio_streams": 2,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "21.192000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "3145728",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Advanced Simple Profile"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_matroska_h264_eac3": {
+    "path": "external/ffmpeg/h264_eac3.mkv",
+    "sha256": "cfc6e11192ac54682481937b1f31a4eb9003bcec634f0e6379414e356cbbbd09",
+    "size": 32299256,
+    "streams": {
+      "audio_codecs": [
+        "eac3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "52.181000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "32299256",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "High"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_matroska_multiple_tracks": {
+    "path": "external/ffmpeg/matroska_multiple_tracks.mkv",
+    "sha256": "8fe74219cd29b9dc9114ad1dc6eec778f0f39b2428c46a6d6936191c9c7d2ea1",
+    "size": 12369807,
+    "streams": {
+      "audio_codecs": [
+        "aac",
+        "mp3"
+      ],
+      "audio_streams": 2,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "30.906000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "12369807",
+      "subtitle_codecs": [
+        "subrip"
+      ],
+      "subtitle_streams": 2,
+      "video_codecs": [
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Simple Profile"
+      ],
+      "video_streams": 2
+    }
+  },
+  "ffmpeg_matroska_rm_in_mkv": {
+    "path": "external/ffmpeg/rm-in-mkv.mkv",
+    "sha256": "8dae09995db32eb3924776f0b5bc15650148a79079aa46b92cc1f726964a9c6e",
+    "size": 1048576,
+    "streams": {
+      "audio_codecs": [
+        "vorbis"
+      ],
+      "audio_streams": 2,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "8356.000000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1048576",
+      "subtitle_codecs": [
+        "text"
+      ],
+      "subtitle_streams": 2,
+      "video_codecs": [
+        "rv40"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_matroska_theora": {
+    "path": "external/ffmpeg/theora.mkv",
+    "sha256": "43eeb78495817713ebb6b770a971590adc7e518870aa2d79e71d85556177c5f0",
+    "size": 10128128,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "6.382000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "10128128",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "theora"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_matroska_vorbis_switch": {
+    "path": "external/ffmpeg/vorbis-audio-switch.mkv",
+    "sha256": "400c74173b70ff323f05fcc851a6e4692c058423a3f6a4b17cd627ea5a408a26",
+    "size": 5431806,
+    "streams": {
+      "audio_codecs": [
+        "vorbis"
+      ],
+      "audio_streams": 4,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "23.180000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "10:11"
+      ],
+      "size": "5431806",
+      "subtitle_codecs": [
+        "ass",
+        "subrip"
+      ],
+      "subtitle_streams": 3,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "High"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_mov_timecode": {
+    "path": "external/ffmpeg/timecode_in_counter_mode.mov",
+    "sha256": "f848a518b3329a2f185bacbaa36f8e15a4d5c45dd0a76972ad743564b40a0a47",
+    "size": 1046755,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [
+        "bt470bg"
+      ],
+      "color_transfers": [],
+      "duration": "1.791667",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1046755",
+      "subtitle_codecs": [
+        "mov_text"
+      ],
+      "subtitle_streams": 1,
+      "video_codecs": [
+        "mjpeg"
+      ],
+      "video_pix_fmts": [
+        "yuvj422p"
+      ],
+      "video_profiles": [
+        "Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_mov_vfr": {
+    "path": "external/ffmpeg/VFR-video-sync.mov",
+    "sha256": "9683ed1639c97c28a196e3b2160d7fbf9bbb0ed4e2f8b9b9066c66f8a004cfa9",
+    "size": 6702302,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [
+        "smpte170m"
+      ],
+      "color_transfers": [
+        "smpte170m"
+      ],
+      "duration": "2239.563333",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "6702302",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Advanced Simple Profile"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_mp4_mpeg1_audio": {
+    "path": "external/ffmpeg/Sample_V_mpeg1_A_mpeg1Layer2.mp4",
+    "sha256": "08f915fd741af11d948fb13a2fe194279b52e9ed50f272dd05f121249647ece0",
+    "size": 1723335,
+    "streams": {
+      "audio_codecs": [
+        "mp3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "80.080000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1723335",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg1video"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_mpeg4_philips": {
+    "path": "external/ffmpeg/mpeg4_by_philips.mp4",
+    "sha256": "b8806a096002b2c3c6ca2180fdb7e83fdff7c4fc3541227e94f7a366d84b9272",
+    "size": 142130,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "7.440000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "142130",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Simple Profile"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffmpeg_ts_sample": {
+    "path": "external/ffmpeg/01c56b0dc1.ts",
+    "sha256": "f8b00ca875f1ca4c2c12d2e83f58c54217c9276f7f8a573ecf73ef91b5631c39",
+    "size": 11304960,
+    "streams": {
+      "audio_codecs": [
+        "aac_latm",
+        "ac3"
+      ],
+      "audio_streams": 3,
+      "color_primaries": [
+        "bt709"
+      ],
+      "color_spaces": [
+        "bt709"
+      ],
+      "color_transfers": [
+        "bt709"
+      ],
+      "duration": "10.726423",
+      "field_orders": [
+        "tt"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "11304960",
+      "subtitle_codecs": [
+        "dvb_subtitle"
+      ],
+      "subtitle_streams": 1,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ffv1_flac_mkv": {
+    "path": "generated/ffv1_flac.mkv",
+    "sha256": "d22fce0d67eac6b81f9688d3e1e77126b97b97998923365f85b3b86eaa501ed8",
+    "size": 56324,
+    "streams": {
+      "audio_codecs": [
+        "flac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "56324",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "ffv1"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "flv1_mp3_flv": {
+    "path": "generated/flv1_mp3.flv",
+    "sha256": "06364b8ddbfcb573221dc205b1e2cc74870bf8418c7f1bf42329e70cde667ebe",
+    "size": 26282,
+    "streams": {
+      "audio_codecs": [
+        "mp3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.024999",
+      "field_orders": [],
+      "sample_aspect_ratios": [],
+      "size": "26282",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "flv1"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "h264_aac_mp4": {
+    "path": "generated/h264_aac_2s.mp4",
+    "sha256": "12824abb617d139f701f8a18cd9ffd3e6b39889e6a858ebe5f5d4b82338449d1",
+    "size": 132767,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "132767",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "hdr10_hevc_mkv": {
+    "path": "generated/hdr10_hevc_bt2020_pq.mkv",
+    "sha256": "1c4980bf6640e5d38f0c5ddf126e94fab168dfe93c4d5d31dca352aecc4160f5",
+    "size": 25074,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [
+        "bt2020"
+      ],
+      "color_spaces": [
+        "bt2020nc"
+      ],
+      "color_transfers": [
+        "smpte2084"
+      ],
+      "duration": "1.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "25074",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p10le"
+      ],
+      "video_profiles": [
+        "Main 10"
+      ],
+      "video_streams": 1
+    }
+  },
+  "hevc_aac_mp4": {
+    "path": "generated/hevc_aac_2s.mp4",
+    "sha256": "dd49c466375a5a91cbe18bd717e2b9bbed6f6def6d0bd65322546905737b002e",
+    "size": 54528,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "54528",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "hlg_hevc_mov": {
+    "path": "generated/hlg_hevc_bt2020.mov",
+    "sha256": "5c0edc89464ca69dfa2449e6faad8352dd897da4325d77aea07650dea241d56c",
+    "size": 23441,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [
+        "bt2020"
+      ],
+      "color_spaces": [
+        "bt2020nc"
+      ],
+      "color_transfers": [
+        "arib-std-b67"
+      ],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "23441",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p10le"
+      ],
+      "video_profiles": [
+        "Main 10"
+      ],
+      "video_streams": 1
+    }
+  },
+  "huffyuv_pcm_avi": {
+    "path": "generated/huffyuv_pcm.avi",
+    "sha256": "17c3b8e0d5d19c39ae48760f1ee1996783c7ad46c6205a2a5d650f51594cbe2e",
+    "size": 260052,
+    "streams": {
+      "audio_codecs": [
+        "pcm_s16le"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "260052",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "huffyuv"
+      ],
+      "video_pix_fmts": [
+        "yuv422p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "interlaced_mpeg2_mpg": {
+    "path": "generated/interlaced_mpeg2.mpg",
+    "sha256": "07323005414bfe789ddeaae04ecf300a250c94bd88bbb05f9de8d3e2ee3d932e",
+    "size": 143360,
+    "streams": {
+      "audio_codecs": [
+        "mp2"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.010911",
+      "field_orders": [
+        "tt"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "143360",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg2video"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "lowres_h264_mp4": {
+    "path": "generated/lowres_h264_96x54.mp4",
+    "sha256": "7652d0057ca16c60e85032a7c154cb2ee52e28de65d8a8d01318d32aab3b7783",
+    "size": 26150,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "26150",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "mpeg2_ac3_ts": {
+    "path": "generated/mpeg2_ac3_2s.ts",
+    "sha256": "4d426c7ca03f97b3c36f1b9353603bd4915d1fd283fb0837ca5c7e3d143e5d0c",
+    "size": 227668,
+    "streams": {
+      "audio_codecs": [
+        "ac3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.005800",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "227668",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg2video"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "mpeg4_mp3_avi": {
+    "path": "generated/mpeg4_mp3_2s.avi",
+    "sha256": "5ea5ed28a7b5e6fc0d12a5ec356d5063ced57f6544e74a438689449d7e07b7db",
+    "size": 105030,
+    "streams": {
+      "audio_codecs": [
+        "mp3"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.041667",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "105030",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Simple Profile"
+      ],
+      "video_streams": 1
+    }
+  },
+  "multi_audio_mkv": {
+    "path": "generated/multi_audio_3_tracks.mkv",
+    "sha256": "206782d7023448e86572f2127f857893610daca7509e3fd19f7aa279b4b5f8c7",
+    "size": 155482,
+    "streams": {
+      "audio_codecs": [
+        "aac",
+        "ac3",
+        "opus"
+      ],
+      "audio_streams": 3,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "155482",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "multi_video_mkv": {
+    "path": "generated/multi_video_2_tracks.mkv",
+    "sha256": "6e362b6c6e6816a554b589930401522b8a6213fd4ed936c712ed6736b03be662",
+    "size": 149237,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "149237",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264",
+        "mpeg4"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline",
+        "Simple Profile"
+      ],
+      "video_streams": 2
+    }
+  },
+  "no_audio_mp4": {
+    "path": "generated/no_audio_h264.mp4",
+    "sha256": "b2b471d70c9da7c5119ea53dd0072fc951b9be75bdf0b4d86be96fa3cdc60ade",
+    "size": 91844,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "91844",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ntsc_dv": {
+    "path": "generated/ntsc.dv",
+    "sha256": "9bc58b2d222aac1e6ad9ed8b957cd0abe189139fae5380b16bb91ad7eb62f247",
+    "size": 3480000,
+    "streams": {
+      "audio_codecs": [
+        "pcm_s16le"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "0.967633",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "8:9"
+      ],
+      "size": "3480000",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "dvvideo"
+      ],
+      "video_pix_fmts": [
+        "yuv411p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "odd_rgb_mkv": {
+    "path": "generated/odd_rgb_127x95.mkv",
+    "sha256": "8cffeadd2351b5e90b5b0bd37805db78f7a19443626f0e9334fb2f20eb7a4805",
+    "size": 81704,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [
+        "gbr"
+      ],
+      "color_transfers": [],
+      "duration": "2.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "81704",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "gbrp"
+      ],
+      "video_profiles": [
+        "High 4:4:4 Predictive"
+      ],
+      "video_streams": 1
+    }
+  },
+  "photoprism_bear_hdr10_hevc": {
+    "path": "external/photoprism/bear_hdr10.hevc",
+    "sha256": "b6a869e766161d92064117bdefe412e28b66f77f3db843e5dff4c04aad858b0c",
+    "size": 272747,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [
+        "bt2020"
+      ],
+      "color_spaces": [
+        "bt2020nc"
+      ],
+      "color_transfers": [
+        "smpte2084"
+      ],
+      "duration": null,
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "272747",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p10le"
+      ],
+      "video_profiles": [
+        "Main 10"
+      ],
+      "video_streams": 1
+    }
+  },
+  "prores_422_mov": {
+    "path": "generated/prores_422.mov",
+    "sha256": "8114d4d2baf8026c01fb05fceb21cb227018ffd3694b7e36d6fda79fdbd22a2b",
+    "size": 310977,
+    "streams": {
+      "audio_codecs": [
+        "pcm_s16le"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "310977",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "prores"
+      ],
+      "video_pix_fmts": [
+        "yuv422p10le"
+      ],
+      "video_profiles": [
+        "Standard"
+      ],
+      "video_streams": 1
+    }
+  },
+  "raw_h264_annexb": {
+    "path": "generated/raw_annexb.h264",
+    "sha256": "d185474807ed611aa4c7758db4709a15032080aa8f84e6c29f683b09357bba69",
+    "size": 16510,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": null,
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "16510",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "rotation_metadata_mov": {
+    "path": "generated/rotation_metadata.mov",
+    "sha256": "9eac4d27f43c53a439cae6ffb7f9720732a765a380af3d5d6cb6caa824558ffc",
+    "size": 111215,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "111215",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "subtitles_mkv": {
+    "path": "generated/subtitles_srt.mkv",
+    "sha256": "16ded70d2497ca93cbb9d385a206175689fe079f40407a2769a56f30e702eadc",
+    "size": 110365,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "110365",
+      "subtitle_codecs": [
+        "subrip"
+      ],
+      "subtitle_streams": 1,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Constrained Baseline"
+      ],
+      "video_streams": 1
+    }
+  },
+  "ten_bit_hevc_mkv": {
+    "path": "generated/ten_bit_hevc.mkv",
+    "sha256": "533bbf892918b01f8cecf7a5f130a0d5f52ff01863142ae3a84ce9ad381209c5",
+    "size": 36537,
+    "streams": {
+      "audio_codecs": [
+        "aac"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.023000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "36537",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p10le"
+      ],
+      "video_profiles": [
+        "Main 10"
+      ],
+      "video_streams": 1
+    }
+  },
+  "testvideos_bbb_h264_mp4": {
+    "path": "external/test-videos/bbb_h264_360_10s_1mb.mp4",
+    "sha256": "77145c94c11f3754207499158df22406e1fe7635553c1c86dc5e881dfeb32016",
+    "size": 991017,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "10.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "991017",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "h264"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "High"
+      ],
+      "video_streams": 1
+    }
+  },
+  "testvideos_bbb_h265_mp4": {
+    "path": "external/test-videos/bbb_h265_360_10s_1mb.mp4",
+    "sha256": "1002dc56cbc487595252b86a088cbf6ba03eb434c33c27a31ca46254310fb05b",
+    "size": 1057627,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "10.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1057627",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "hevc"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Main"
+      ],
+      "video_streams": 1
+    }
+  },
+  "testvideos_bbb_vp8_webm": {
+    "path": "external/test-videos/bbb_vp8_360_10s_1mb.webm",
+    "sha256": "7673250a57b48bf7da5830b766d4e3c08e93bce2809fec7667b8e2344f4c95ae",
+    "size": 1049824,
+    "streams": {
+      "audio_codecs": [],
+      "audio_streams": 0,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "10.000000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "1049824",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "vp8"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "0"
+      ],
+      "video_streams": 1
+    }
+  },
+  "theora_vorbis_ogv": {
+    "path": "generated/theora_vorbis_2s.ogv",
+    "sha256": "9e57804b9cfa66e54c4c3510e78556af65e9a1aa6e37ee27e852c396a781835b",
+    "size": 61296,
+    "streams": {
+      "audio_codecs": [
+        "vorbis"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.000000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "61296",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "theora"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  },
+  "vp9_opus_webm": {
+    "path": "generated/vp9_opus_2s.webm",
+    "sha256": "e26f9f3be1b6e054608d5eac617ed0e4cb9cfe3d33f4f72ef65c9e0ff987598d",
+    "size": 66469,
+    "streams": {
+      "audio_codecs": [
+        "opus"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "2.008000",
+      "field_orders": [
+        "progressive"
+      ],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "66469",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "vp9"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [
+        "Profile 0"
+      ],
+      "video_streams": 1
+    }
+  },
+  "wmv2_wmav2_wmv": {
+    "path": "generated/wmv2_wmav2.wmv",
+    "sha256": "6c9a928f9f6cbf97bf72ac32fb82a571d5aa9fa307a34402ac61424a2e4e5b35",
+    "size": 74501,
+    "streams": {
+      "audio_codecs": [
+        "wmav2"
+      ],
+      "audio_streams": 1,
+      "color_primaries": [],
+      "color_spaces": [],
+      "color_transfers": [],
+      "duration": "1.092000",
+      "field_orders": [],
+      "sample_aspect_ratios": [
+        "1:1"
+      ],
+      "size": "74501",
+      "subtitle_codecs": [],
+      "subtitle_streams": 0,
+      "video_codecs": [
+        "wmv2"
+      ],
+      "video_pix_fmts": [
+        "yuv420p"
+      ],
+      "video_profiles": [],
+      "video_streams": 1
+    }
+  }
+}

@@ -145,7 +145,7 @@ class MediaFile:
         self.logger.debug(f"🔍 Initializing MediaFile for: {file_path}")
 
         self.video_info = self.get_video_info()
-        if not self.video_info:
+        if not self.video_info or all(stream.is_metadata for stream in self.video_info):
             self.logger.error(f"❌ Invalid video file: {file_path}")
             raise ValueError("The provided file does not contain a valid video stream.")
 

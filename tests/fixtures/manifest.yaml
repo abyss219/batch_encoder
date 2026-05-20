@@ -1,0 +1,431 @@
+version: 1
+description: Short, diverse media fixtures for batch_encoder.
+default_media_root: .cache/batch_encoder_fixtures
+
+profiles:
+  small:
+    max_total_bytes: 2147483648
+    include_tags:
+      - generated
+      - external-small
+  generated:
+    include_tags:
+      - generated
+  external:
+    include_tags:
+      - external-small
+
+generated:
+  - id: h264_aac_mp4
+    path: generated/h264_aac_2s.mp4
+    recipe: h264_aac_mp4
+    tags: [generated, mp4, h264, aac]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [h264]
+      audio_codecs: [aac]
+
+  - id: hevc_aac_mp4
+    path: generated/hevc_aac_2s.mp4
+    recipe: hevc_aac_mp4
+    tags: [generated, mp4, hevc, aac, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [hevc]
+      audio_codecs: [aac]
+
+  - id: av1_opus_mkv
+    path: generated/av1_opus_1s.mkv
+    recipe: av1_opus_mkv
+    tags: [generated, mkv, av1, opus, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [av1]
+      audio_codecs: [opus]
+
+  - id: vp9_opus_webm
+    path: generated/vp9_opus_2s.webm
+    recipe: vp9_opus_webm
+    tags: [generated, webm, vp9, opus, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [vp9]
+      audio_codecs: [opus]
+
+  - id: theora_vorbis_ogv
+    path: generated/theora_vorbis_2s.ogv
+    recipe: theora_vorbis_ogv
+    tags: [generated, ogv, theora, vorbis, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [theora]
+      audio_codecs: [vorbis]
+
+  - id: mpeg4_mp3_avi
+    path: generated/mpeg4_mp3_2s.avi
+    recipe: mpeg4_mp3_avi
+    tags: [generated, avi, mpeg4, mp3]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [mpeg4]
+      audio_codecs: [mp3]
+
+  - id: mpeg2_ac3_ts
+    path: generated/mpeg2_ac3_2s.ts
+    recipe: mpeg2_ac3_ts
+    tags: [generated, ts, mpeg2video, ac3]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [mpeg2video]
+      audio_codecs: [ac3]
+
+  - id: multi_audio_mkv
+    path: generated/multi_audio_3_tracks.mkv
+    recipe: multi_audio_mkv
+    tags: [generated, mkv, h264, multi-audio]
+    expect:
+      video_streams: 1
+      audio_streams: 3
+      video_codecs: [h264]
+
+  - id: multi_video_mkv
+    path: generated/multi_video_2_tracks.mkv
+    recipe: multi_video_mkv
+    tags: [generated, mkv, multi-video]
+    expect:
+      video_streams: 2
+      audio_streams: 1
+
+  - id: subtitles_mkv
+    path: generated/subtitles_srt.mkv
+    recipe: subtitles_mkv
+    tags: [generated, mkv, subtitles]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+
+  - id: attached_pic_mp4
+    path: generated/attached_picture.mp4
+    recipe: attached_pic_mp4
+    tags: [generated, mp4, attached-picture, metadata-video]
+    expect:
+      video_streams: 2
+      audio_streams: 1
+
+  - id: no_audio_mp4
+    path: generated/no_audio_h264.mp4
+    recipe: no_audio_mp4
+    tags: [generated, mp4, no-audio]
+    expect:
+      video_streams: 1
+      audio_streams: 0
+
+  - id: ten_bit_hevc_mkv
+    path: generated/ten_bit_hevc.mkv
+    recipe: ten_bit_hevc_mkv
+    tags: [generated, mkv, hevc, ten-bit, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [hevc]
+
+  - id: odd_rgb_mkv
+    path: generated/odd_rgb_127x95.mkv
+    recipe: odd_rgb_mkv
+    tags: [generated, mkv, odd-size, rgb]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+
+  - id: rotation_metadata_mov
+    path: generated/rotation_metadata.mov
+    recipe: rotation_metadata_mov
+    tags: [generated, mov, metadata, rotation]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+
+  - id: lowres_h264_mp4
+    path: generated/lowres_h264_96x54.mp4
+    recipe: lowres_h264_mp4
+    tags: [generated, mp4, lowres]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+
+  - id: hdr10_hevc_mkv
+    path: generated/hdr10_hevc_bt2020_pq.mkv
+    recipe: hdr10_hevc_mkv
+    tags: [generated, mkv, hevc, hdr, hdr10, ten-bit, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [hevc]
+      audio_codecs: [aac]
+      video_pix_fmts: [yuv420p10le]
+      color_primaries: [bt2020]
+      color_transfers: [smpte2084]
+      color_spaces: [bt2020nc]
+
+  - id: hlg_hevc_mov
+    path: generated/hlg_hevc_bt2020.mov
+    recipe: hlg_hevc_mov
+    tags: [generated, mov, hevc, hdr, hlg, ten-bit, efficient]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [hevc]
+      audio_codecs: [aac]
+      video_pix_fmts: [yuv420p10le]
+      color_primaries: [bt2020]
+      color_transfers: [arib-std-b67]
+      color_spaces: [bt2020nc]
+
+  - id: prores_422_mov
+    path: generated/prores_422.mov
+    recipe: prores_422_mov
+    tags: [generated, mov, prores, yuv422p10le, pcm]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [prores]
+      audio_codecs: [pcm_s16le]
+      video_pix_fmts: [yuv422p10le]
+
+  - id: dnxhr_mxf
+    path: generated/dnxhr_lb.mxf
+    recipe: dnxhr_mxf
+    tags: [generated, mxf, dnxhr, dnxhd, yuv422p, pcm]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [dnxhd]
+      audio_codecs: [pcm_s16le]
+      video_pix_fmts: [yuv422p]
+
+  - id: ffv1_flac_mkv
+    path: generated/ffv1_flac.mkv
+    recipe: ffv1_flac_mkv
+    tags: [generated, mkv, ffv1, flac, lossless]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [ffv1]
+      audio_codecs: [flac]
+
+  - id: huffyuv_pcm_avi
+    path: generated/huffyuv_pcm.avi
+    recipe: huffyuv_pcm_avi
+    tags: [generated, avi, huffyuv, pcm, lossless]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [huffyuv]
+      audio_codecs: [pcm_s16le]
+
+  - id: flv1_mp3_flv
+    path: generated/flv1_mp3.flv
+    recipe: flv1_mp3_flv
+    tags: [generated, flv, flv1, mp3]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [flv1]
+      audio_codecs: [mp3]
+
+  - id: wmv2_wmav2_wmv
+    path: generated/wmv2_wmav2.wmv
+    recipe: wmv2_wmav2_wmv
+    tags: [generated, wmv, asf, wmv2, wmav2]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [wmv2]
+      audio_codecs: [wmav2]
+
+  - id: interlaced_mpeg2_mpg
+    path: generated/interlaced_mpeg2.mpg
+    recipe: interlaced_mpeg2_mpg
+    tags: [generated, mpg, mpeg2video, interlaced, mp2]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [mpeg2video]
+      audio_codecs: [mp2]
+
+  - id: anamorphic_h264_mp4
+    path: generated/anamorphic_h264_sar_4_3.mp4
+    recipe: anamorphic_h264_mp4
+    tags: [generated, mp4, h264, anamorphic, sar]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [h264]
+      audio_codecs: [aac]
+      sample_aspect_ratios: ["4:3"]
+
+  - id: alpha_qtrle_mov
+    path: generated/alpha_qtrle.mov
+    recipe: alpha_qtrle_mov
+    tags: [generated, mov, qtrle, alpha, no-audio]
+    expect:
+      video_streams: 1
+      audio_streams: 0
+      video_codecs: [qtrle]
+      video_pix_fmts: [argb]
+
+  - id: raw_h264_annexb
+    path: generated/raw_annexb.h264
+    recipe: raw_h264_annexb
+    tags: [generated, raw, h264, annexb, no-audio]
+    expect:
+      video_streams: 1
+      audio_streams: 0
+      video_codecs: [h264]
+
+  - id: ntsc_dv
+    path: generated/ntsc.dv
+    recipe: ntsc_dv
+    tags: [generated, dv, dvvideo, pcm]
+    expect:
+      video_streams: 1
+      audio_streams: 1
+      video_codecs: [dvvideo]
+      audio_codecs: [pcm_s16le]
+
+external:
+  - id: ffmpeg_matroska_multiple_tracks
+    path: external/ffmpeg/matroska_multiple_tracks.mkv
+    url: https://samples.ffmpeg.org/Matroska/multiple_tracks.mkv
+    source: FFmpeg samples
+    tags: [external-small, mkv, multi-track]
+    max_bytes: 20000000
+
+  - id: ffmpeg_matroska_rm_in_mkv
+    path: external/ffmpeg/rm-in-mkv.mkv
+    url: https://samples.ffmpeg.org/Matroska/rm-in-mkv.mkv
+    source: FFmpeg samples
+    tags: [external-small, mkv, realmedia]
+    max_bytes: 3000000
+
+  - id: ffmpeg_matroska_theora
+    path: external/ffmpeg/theora.mkv
+    url: https://samples.ffmpeg.org/Matroska/theora.mkv
+    source: FFmpeg samples
+    tags: [external-small, mkv, theora]
+    max_bytes: 15000000
+
+  - id: ffmpeg_matroska_vorbis_switch
+    path: external/ffmpeg/vorbis-audio-switch.mkv
+    url: https://samples.ffmpeg.org/Matroska/vorbis-audio-switch.mkv
+    source: FFmpeg samples
+    tags: [external-small, mkv, audio-switch]
+    max_bytes: 8000000
+
+  - id: ffmpeg_matroska_h264_eac3
+    path: external/ffmpeg/h264_eac3.mkv
+    url: https://samples.ffmpeg.org/Matroska/H264%2BEAC3.mkv
+    source: FFmpeg samples
+    tags: [external-small, mkv, h264, eac3]
+    max_bytes: 40000000
+
+  - id: ffmpeg_avi_two_audio
+    path: external/ffmpeg/2-audio-streams.avi
+    url: https://samples.ffmpeg.org/avi/2-audio-streams.avi
+    source: FFmpeg samples
+    tags: [external-small, avi, multi-audio]
+    max_bytes: 6000000
+
+  - id: ffmpeg_avi_bad_mp3_rate
+    path: external/ffmpeg/ffmp3_bad_rate_detection.avi
+    url: https://samples.ffmpeg.org/avi/ffmp3_bad_rate_detection.avi
+    source: FFmpeg samples
+    tags: [external-small, avi, mp3-edge]
+    max_bytes: 1000000
+
+  - id: ffmpeg_mov_vfr
+    path: external/ffmpeg/VFR-video-sync.mov
+    url: https://samples.ffmpeg.org/mov/VFR-video-sync.mov
+    source: FFmpeg samples
+    tags: [external-small, mov, vfr]
+    max_bytes: 10000000
+
+  - id: ffmpeg_mov_timecode
+    path: external/ffmpeg/timecode_in_counter_mode.mov
+    url: https://samples.ffmpeg.org/mov/timecode_in_counter_mode.mov
+    source: FFmpeg samples
+    tags: [external-small, mov, timecode]
+    max_bytes: 3000000
+
+  - id: ffmpeg_mp4_mpeg1_audio
+    path: external/ffmpeg/Sample_V_mpeg1_A_mpeg1Layer2.mp4
+    url: https://samples.ffmpeg.org/mov/Sample_V_mpeg1_A_mpeg1Layer2.mp4
+    source: FFmpeg samples
+    tags: [external-small, mp4, mpeg1video, mp2]
+    max_bytes: 4000000
+
+  - id: ffmpeg_ts_sample
+    path: external/ffmpeg/01c56b0dc1.ts
+    url: https://samples.ffmpeg.org/ts/01c56b0dc1.ts
+    source: FFmpeg samples
+    tags: [external-small, ts]
+    max_bytes: 15000000
+
+  - id: ffmpeg_mpeg4_philips
+    path: external/ffmpeg/mpeg4_by_philips.mp4
+    url: https://samples.ffmpeg.org/MPEG-4/MPEG4%20by%20philips.mp4
+    source: FFmpeg samples
+    tags: [external-small, mp4, mpeg4]
+    max_bytes: 1000000
+
+  - id: photoprism_bear_hdr10_hevc
+    path: external/photoprism/bear_hdr10.hevc
+    url: https://dl.photoprism.app/samples/Formats/Video/H.265-HEVC/bear-1280x720-hevc-10bit-hdr10.hevc
+    source: PhotoPrism samples
+    tags: [external-small, hevc, raw, hdr, hdr10, ten-bit]
+    max_bytes: 1000000
+    expect:
+      video_streams: 1
+      audio_streams: 0
+      video_codecs: [hevc]
+      video_pix_fmts: [yuv420p10le]
+      color_primaries: [bt2020]
+      color_transfers: [smpte2084]
+      color_spaces: [bt2020nc]
+
+  - id: testvideos_bbb_h264_mp4
+    path: external/test-videos/bbb_h264_360_10s_1mb.mp4
+    url: https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4
+    source: Test Videos
+    tags: [external-small, mp4, h264]
+    max_bytes: 2000000
+    expect:
+      video_streams: 1
+      video_codecs: [h264]
+
+  - id: testvideos_bbb_h265_mp4
+    path: external/test-videos/bbb_h265_360_10s_1mb.mp4
+    url: https://test-videos.co.uk/vids/bigbuckbunny/mp4/h265/360/Big_Buck_Bunny_360_10s_1MB.mp4
+    source: Test Videos
+    tags: [external-small, mp4, hevc, efficient]
+    max_bytes: 2000000
+    expect:
+      video_streams: 1
+      video_codecs: [hevc]
+
+  - id: testvideos_bbb_vp8_webm
+    path: external/test-videos/bbb_vp8_360_10s_1mb.webm
+    url: https://test-videos.co.uk/vids/bigbuckbunny/webm/vp8/360/Big_Buck_Bunny_360_10s_1MB.webm
+    source: Test Videos
+    tags: [external-small, webm, vp8]
+    max_bytes: 2000000
+    expect:
+      video_streams: 1
+      video_codecs: [vp8]

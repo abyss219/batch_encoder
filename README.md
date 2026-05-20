@@ -105,3 +105,43 @@ The final log and JSON report keep exact result states:
 ```bash
 python encoding.py /path/to/video.mkv --codec hevc --output-path /path/to/output
 ```
+
+## Test Fixtures
+
+The test corpus is reproducible and intentionally kept out of git. Fixture metadata, hashes, and generation/download recipes are committed; media files live under `.cache/batch_encoder_fixtures/`.
+
+Generate the local synthetic fixtures:
+
+```bash
+python scripts/prepare_fixtures.py generate --profile generated
+```
+
+Download the small external corpus from FFmpeg samples, PhotoPrism samples, and Test Videos:
+
+```bash
+python scripts/prepare_fixtures.py download --profile external
+```
+
+Verify everything and refresh the hash lock:
+
+```bash
+python scripts/prepare_fixtures.py verify --profile small --write-lock
+```
+
+Run tests:
+
+```bash
+python -m pytest
+```
+
+Useful subsets:
+
+```bash
+python -m pytest tests/test_batch_encoder_behavior.py
+python -m pytest -m fixtures tests/test_media_fixtures.py tests/test_encoder_command_building.py
+python -m pytest -m slow tests/test_batch_encoding_smoke.py
+```
+
+The `small` profile is capped below 2 GB and is currently about 100 MB on disk. The corpus is mostly short generated clips plus selected public samples covering MP4, MKV, WebM, OGV, AVI, MOV, MXF, FLV, WMV/ASF, MPEG-TS, raw H.264/HEVC streams, DV, HEVC HDR10/HLG, AV1, VP9, VP8, Theora, ProRes, DNxHR/DNxHD, FFV1, HuffYUV, QTRLE alpha video, MPEG-4, MPEG-2, FLV1, multi-audio, multi-video, subtitles, attached pictures, no-audio files, 10-bit video, odd dimensions, anamorphic SAR, interlaced video, rotation metadata, VFR/timecode samples, malformed/edge MP3 detection, and still-image rejection.
+
+VSCode launch configurations are included for all tests, fast unit tests, media fixture tests, encode smoke tests, and fixture generation/download/verification.

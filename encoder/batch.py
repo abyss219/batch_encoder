@@ -54,6 +54,9 @@ VIDEO_EXTENSIONS = (
     ".smil",
     ".wm",
     ".wtv",
+    ".h264",
+    ".h265",
+    ".hevc",
 )
 
 EFFICIENT_CODECS = frozenset({"av1", "hevc", "vp9", "vvc", "theora"})

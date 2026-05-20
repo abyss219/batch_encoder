@@ -1,0 +1,174 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Tests: all",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Tests: fast unit",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/test_batch_helpers.py",
+        "tests/test_batch_encoder_behavior.py",
+        "tests/test_fixture_manifest.py",
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Tests: media fixtures",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/test_media_fixtures.py",
+        "tests/test_encoder_command_building.py",
+        "tests/test_encoder_cleanup.py",
+        "-m",
+        "fixtures",
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Tests: batch behavior",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/test_batch_encoder_behavior.py",
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Tests: encoder command building",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/test_encoder_command_building.py",
+        "-m",
+        "fixtures",
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Tests: encode smoke",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/test_batch_encoding_smoke.py",
+        "-m",
+        "slow",
+        "-ra"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Fixtures: list small",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/prepare_fixtures.py",
+      "args": [
+        "list",
+        "--profile",
+        "small"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Fixtures: generate synthetic",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/prepare_fixtures.py",
+      "args": [
+        "generate",
+        "--profile",
+        "generated"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Fixtures: download external",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/prepare_fixtures.py",
+      "args": [
+        "download",
+        "--profile",
+        "external"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Fixtures: verify small",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/prepare_fixtures.py",
+      "args": [
+        "verify",
+        "--profile",
+        "small"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Fixtures: verify and update lock",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/prepare_fixtures.py",
+      "args": [
+        "verify",
+        "--profile",
+        "small",
+        "--write-lock"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${workspaceFolder}/.venv/bin/python"
+    }
+  ]
+}

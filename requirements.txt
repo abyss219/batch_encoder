@@ -3,3 +3,5 @@ colorama
 tqdm
 pyyaml
 dacite
+pytest
+pytest-timeout
