@@ -155,10 +155,32 @@ Retry failed records from a specific report:
 python batch_encoding.py retry logs/batch_encoder_<run_id>_summary.json
 ```
 
-Existing encode options still apply in retry mode:
+### Options Used For A Retry
+
+By default a retry **reuses the encode options stored in the source report**, so
+it reproduces the original run. The summary JSON records the options it ran with
+(codec, min size, denoise, verify, skip-codecs, thresholds, and so on), and the
+retry reads them back from the report you select.
+
+Any option you pass on the command line overrides the stored value for that
+option only:
 
 ```bash
-python batch_encoding.py retry latest --codec hevc --skip-codecs efficient
+# Reuse the original run's options, but force HEVC and skip VMAF verification.
+python batch_encoding.py retry latest --codec hevc --no-verify
+```
+
+The full precedence, lowest to highest, is:
+
+```
+config.yaml defaults  <  source report options  <  command-line flags
+```
+
+To ignore the stored options entirely and fall back to your current
+`config.yaml` defaults (still overridable by flags), pass `--use-current-config`:
+
+```bash
+python batch_encoding.py retry latest --use-current-config
 ```
 
 `retry` (no target) opens the menu and `retry latest` picks the newest report

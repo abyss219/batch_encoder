@@ -92,10 +92,21 @@ def parse_arguments(argv: Optional[list[str]] = None):
     retry_parser = subparsers.add_parser(
         "retry",
         parents=[common],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Retry only the FAILED records of a previous summary report.",
         description=(
-            "Retry only the FAILED records of a previous summary report. "
-            "LARGESIZE, LOWQUALITY, SKIPPED, and SUCCESS records are never retried."
+            "Retry only the FAILED records of a previous summary report.\n"
+            "LARGESIZE, LOWQUALITY, SKIPPED, and SUCCESS records are never retried.\n"
+            "\n"
+            "By default the retry reuses the encode options stored in the source\n"
+            "report, so it reproduces the original run. Any option you pass on the\n"
+            "command line overrides the stored value for that option. Pass\n"
+            "--use-current-config to ignore the stored options entirely and use the\n"
+            "current config.yaml defaults instead.\n"
+            "\n"
+            "Option precedence (low to high):\n"
+            "  config.yaml defaults  <  source report options  <  command-line flags\n"
+            "(With --use-current-config the source report options layer is skipped.)"
         ),
     )
     retry_parser.add_argument(
@@ -109,6 +120,15 @@ def parse_arguments(argv: Optional[list[str]] = None):
             "specific batch_encoder_*_summary.json file."
         ),
     )
+    retry_parser.add_argument(
+        "--use-current-config",
+        action="store_true",
+        help=(
+            "Ignore the encode options stored in the source report and use the "
+            "current config.yaml defaults (still overridable by other flags). "
+            "Without this, retry reuses the original run's options."
+        ),
+    )
 
     return parser.parse_args(argv)
 
@@ -117,7 +137,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     """Registers the encode options shared by normal and retry modes."""
     parser.add_argument(
         "--min-size",
-        default=config.batch.min_size,
+        default=argparse.SUPPRESS,
         help=(
             "Specify the minimum file size for encoding.\n"
             "Example formats: '500MB', '1GB', '200KB'.\n"
@@ -129,7 +149,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--codec",
         choices=["hevc", "av1"],
-        default=config.batch.codec,
+        default=argparse.SUPPRESS,
         help=(
             "Choose the codec for encoding:\n"
             "  hevc - High Efficiency Video Coding (H.265)\n"
@@ -140,7 +160,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--skip-codecs",
         nargs="+",
-        default=config.batch.skip_codecs,
+        default=argparse.SUPPRESS,
         help=(
             "Codecs to copy instead of re-encoding. Use 'efficient' for "
             "av1/hevc/vp9/vvc/theora, 'none' to re-encode all video codecs, "
@@ -158,7 +178,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--denoise",
         choices=["light", "mild", "moderate", "heavy"],
-        default=config.batch.denoise,
+        default=argparse.SUPPRESS,
         help=(
             "Apply a denoising filter to improve video quality:\n"
             "  light    - Reduces minor noise while preserving details\n"
@@ -172,7 +192,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
         "--fast-decode",
         type=int,
         choices=[0, 1, 2],
-        default=config.svt_av1.fast_decode,
+        default=argparse.SUPPRESS,
         help=(
             "Enable fast decode optimizations for AV1:\n"
             "  0 - No optimization (best compression, slowest decoding)\n"
@@ -185,7 +205,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
         "--tune",
         type=int,
         choices=[0, 1, 2],
-        default=config.svt_av1.tune,
+        default=argparse.SUPPRESS,
         help=(
             "Select the tuning metric for encoding quality:\n"
             "  0 - VQ (Visual Quality): Best subjective quality for general use\n"
@@ -197,7 +217,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--verify",
         action=argparse.BooleanOptionalAction,
-        default=config.verify.verify,
+        default=argparse.SUPPRESS,
         help=(
             "Enable or disable VMAF verification. If enabled, the script compares "
             "the original and encoded videos before deleting the original."
@@ -207,7 +227,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--check-size",
         action=argparse.BooleanOptionalAction,
-        default=config.verify.check_size,
+        default=argparse.SUPPRESS,
         help=(
             "Enable or disable file size checks after encoding. If enabled, larger "
             "encoded videos are removed and reported as LARGESIZE."
@@ -217,7 +237,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--delete-origin",
         action=argparse.BooleanOptionalAction,
-        default=config.verify.delete_origin,
+        default=argparse.SUPPRESS,
         help=(
             "Enable or disable replacing the original video with the encoded video. "
             "The original is removed only after successful checks."
@@ -231,14 +251,14 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
             if 0 <= float(x) <= 100
             else argparse.ArgumentTypeError("Threshold must be between 0 and 100.")
         ),
-        default=config.verify.delete_threshold,
+        default=argparse.SUPPRESS,
         help="Minimum VMAF score required to delete the original video.",
     )
 
     parser.add_argument(
         "--min-resolution",
         choices=["4k", "2k", "1080p", "720p", "480p", "360p"],
-        default=config.batch.min_resolution,
+        default=argparse.SUPPRESS,
         help=(
             "Set the minimum resolution threshold for encoding.\n"
             "Videos with lower resolutions will be skipped."
@@ -255,6 +275,71 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
         version=f"%(prog)s {VERSION}",
         help="Show the version number and exit.",
     )
+
+
+# Encode options that can be inherited from a retry source report. Run-control
+# flags (force_reset, debug) are intentionally excluded: they always come from
+# the current command line.
+ENCODE_OPTION_KEYS = (
+    "codec",
+    "min_size",
+    "skip_codecs",
+    "denoise",
+    "fast_decode",
+    "tune",
+    "verify",
+    "check_size",
+    "delete_origin",
+    "delete_threshold",
+    "min_resolution",
+)
+
+
+def _config_option_defaults() -> dict[str, Any]:
+    """Current config.yaml defaults for every inheritable encode option."""
+    return {
+        "codec": config.batch.codec,
+        "min_size": config.batch.min_size,
+        "skip_codecs": config.batch.skip_codecs,
+        "denoise": config.batch.denoise,
+        "fast_decode": config.svt_av1.fast_decode,
+        "tune": config.svt_av1.tune,
+        "verify": config.verify.verify,
+        "check_size": config.verify.check_size,
+        "delete_origin": config.verify.delete_origin,
+        "delete_threshold": config.verify.delete_threshold,
+        "min_resolution": config.batch.min_resolution,
+    }
+
+
+def resolve_encode_options(
+    args: argparse.Namespace,
+    report_options: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """
+    Resolve the effective encode options by layering sources.
+
+    Precedence, lowest to highest:
+      1. current config.yaml defaults
+      2. options stored in the retry source report (when provided)
+      3. options explicitly passed on the command line
+
+    Because the inheritable options use ``argparse.SUPPRESS`` as their default,
+    only flags the user actually passed are present on ``args``; everything else
+    falls through to the report (if any) and then the config defaults.
+    """
+    resolved = _config_option_defaults()
+
+    if report_options:
+        for key in ENCODE_OPTION_KEYS:
+            if key in report_options:
+                resolved[key] = report_options[key]
+
+    for key in ENCODE_OPTION_KEYS:
+        if hasattr(args, key):  # present only if explicitly passed
+            resolved[key] = getattr(args, key)
+
+    return resolved
 
 
 class BatchEncoder:
@@ -961,18 +1046,24 @@ def main() -> int:
     args = parse_arguments()
 
     try:
-        skip_codecs = resolve_skip_codecs(args.skip_codecs)
-        encoding_class = get_custom_encoding_class(args.codec)
-
         if args.mode == "retry":
             log_dir = Path(config.general.log_dir)
             report_path = resolve_retry_report(args.retry_target, log_dir)
             report = load_summary_report(report_path)
+            # Reuse the source report's options unless --use-current-config.
+            report_options = (
+                None if args.use_current_config else report.get("options")
+            )
+            options = resolve_encode_options(args, report_options)
             batch_input = make_retry_batch_input(report_path, report)
             retry_context = make_retry_context(report_path, report, batch_input)
         else:
+            options = resolve_encode_options(args)
             batch_input = discover_batch_input(args.input_path)
             retry_context = None
+
+        skip_codecs = resolve_skip_codecs(options["skip_codecs"])
+        encoding_class = get_custom_encoding_class(options["codec"])
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -980,17 +1071,17 @@ def main() -> int:
     encoder = BatchEncoder(
         batch_input=batch_input,
         encoding_class=encoding_class,
-        codec=args.codec,
-        min_size=args.min_size,
+        codec=options["codec"],
+        min_size=options["min_size"],
         force_reset=args.force_reset,
-        denoise=args.denoise,
-        verify=args.verify,
-        check_size=args.check_size,
-        delete_origin=args.delete_origin,
-        delete_threshold=args.delete_threshold,
-        min_resolution=args.min_resolution,
-        fast_decode=args.fast_decode,
-        tune=args.tune,
+        denoise=options["denoise"],
+        verify=options["verify"],
+        check_size=options["check_size"],
+        delete_origin=options["delete_origin"],
+        delete_threshold=options["delete_threshold"],
+        min_resolution=options["min_resolution"],
+        fast_decode=options["fast_decode"],
+        tune=options["tune"],
         skip_codecs=skip_codecs,
         debug=args.debug,
         retry_context=retry_context,

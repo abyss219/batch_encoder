@@ -256,3 +256,80 @@ def test_parse_arguments_retry_keeps_encode_options():
     assert args.mode == "retry"
     assert args.retry_target == "report.json"
     assert args.codec == "av1"
+
+
+def test_parse_arguments_unpassed_options_are_absent():
+    # SUPPRESS defaults: options the user did not pass are not on the namespace.
+    args = batch_encoding.parse_arguments(["encode", "d"])
+    assert not hasattr(args, "codec")
+    assert not hasattr(args, "min_size")
+
+
+def test_parse_arguments_retry_has_use_current_config_flag():
+    args = batch_encoding.parse_arguments(["retry", "latest", "--use-current-config"])
+    assert args.use_current_config is True
+    args = batch_encoding.parse_arguments(["retry", "latest"])
+    assert args.use_current_config is False
+
+
+# --------------------------------------------------------------------------- #
+# Option resolution / precedence
+# --------------------------------------------------------------------------- #
+REPORT_OPTIONS = {
+    "codec": "av1",
+    "min_size": "500MB",
+    "skip_codecs": "none",
+    "denoise": "heavy",
+    "fast_decode": "1",
+    "tune": "2",
+    "verify": True,
+    "check_size": False,
+    "delete_origin": False,
+    "delete_threshold": 80.0,
+    "min_resolution": "720p",
+}
+
+
+def test_resolve_options_encode_uses_config_then_cli():
+    defaults = batch_encoding._config_option_defaults()
+
+    bare = batch_encoding.resolve_encode_options(batch_encoding.parse_arguments(["encode", "d"]))
+    assert bare["codec"] == defaults["codec"]
+
+    overridden = batch_encoding.resolve_encode_options(
+        batch_encoding.parse_arguments(["encode", "d", "--codec", "av1"])
+    )
+    assert overridden["codec"] == "av1"
+    assert overridden["min_size"] == defaults["min_size"]
+
+
+def test_resolve_options_retry_inherits_report():
+    args = batch_encoding.parse_arguments(["retry", "latest"])
+    opts = batch_encoding.resolve_encode_options(args, REPORT_OPTIONS)
+
+    assert opts["codec"] == "av1"
+    assert opts["denoise"] == "heavy"
+    assert opts["verify"] is True
+    assert opts["min_resolution"] == "720p"
+
+
+def test_resolve_options_cli_overrides_report():
+    args = batch_encoding.parse_arguments(
+        ["retry", "latest", "--codec", "hevc", "--no-verify"]
+    )
+    opts = batch_encoding.resolve_encode_options(args, REPORT_OPTIONS)
+
+    # Explicit flags win; everything else still comes from the report.
+    assert opts["codec"] == "hevc"
+    assert opts["verify"] is False
+    assert opts["denoise"] == "heavy"
+
+
+def test_resolve_options_use_current_config_skips_report():
+    defaults = batch_encoding._config_option_defaults()
+    args = batch_encoding.parse_arguments(["retry", "latest", "--use-current-config"])
+    # main() passes report_options=None when the flag is set.
+    opts = batch_encoding.resolve_encode_options(args, None)
+
+    assert opts["codec"] == defaults["codec"]
+    assert opts["denoise"] == defaults["denoise"]
