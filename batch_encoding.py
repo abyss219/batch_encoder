@@ -22,6 +22,12 @@ from encoder.batch import (
     make_state_id,
     resolve_skip_codecs,
 )
+from encoder.retry import (
+    load_summary_report,
+    make_retry_batch_input,
+    make_retry_context,
+    resolve_retry_report,
+)
 from encoder.encoders.custom_encoder import get_custom_encoding_class
 from encoder.encoders.encoder import PresetCRFEncoder
 
@@ -38,24 +44,77 @@ STATUS_ORDER = (
 )
 
 
-def parse_arguments():
+MODES = ("encode", "retry")
+
+
+def parse_arguments(argv: Optional[list[str]] = None):
     """
     Parses command-line arguments for batch video encoding.
 
-    The input can be either:
-    - A directory, which is scanned recursively for video files.
-    - A text file, where each non-empty, non-comment line is a video path.
-    - A single video file, which is treated as a one-item batch.
-    """
-    parser = argparse.ArgumentParser(
-        description="Batch video encoding script with resume support."
-    )
+    Two subcommands share the same encode options:
 
-    parser.add_argument(
+    - ``encode <dir|list.txt|video>``: the normal batch encode. A directory is
+      scanned recursively, a text file is read as one path per line, and a
+      single video file is a one-item batch.
+    - ``retry [latest|<summary.json>]``: re-run only the FAILED records of a
+      previous summary report.
+
+    ``encode`` is the default: ``batch_encoding.py <path>`` is treated as
+    ``batch_encoding.py encode <path>`` so existing commands keep working.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # Default to the encode subcommand when no subcommand is given, so the
+    # historical `batch_encoding.py <path>` form still works.
+    if not argv or (argv[0] not in MODES and not argv[0].startswith("-")):
+        argv = ["encode"] + argv
+
+    # Shared encode options live on a parent parser so each subcommand inherits
+    # them without duplication and gets them in its own --help output.
+    common = argparse.ArgumentParser(add_help=False)
+    _add_common_options(common)
+
+    parser = argparse.ArgumentParser(
+        description="Batch video encoding script with resume support.",
+    )
+    subparsers = parser.add_subparsers(dest="mode", required=True, metavar="{encode,retry}")
+
+    encode_parser = subparsers.add_parser(
+        "encode",
+        parents=[common],
+        help="Encode a video directory, a path list, or a single video file.",
+        description="Encode a video directory, a path list, or a single video file.",
+    )
+    encode_parser.add_argument(
         "input_path",
         help="Path to a video directory, a video path list, or a single video file.",
     )
 
+    retry_parser = subparsers.add_parser(
+        "retry",
+        parents=[common],
+        help="Retry only the FAILED records of a previous summary report.",
+        description=(
+            "Retry only the FAILED records of a previous summary report. "
+            "LARGESIZE, LOWQUALITY, SKIPPED, and SUCCESS records are never retried."
+        ),
+    )
+    retry_parser.add_argument(
+        "retry_target",
+        nargs="?",
+        default=None,
+        metavar="latest|<summary.json>",
+        help=(
+            "Retry source: omit for an interactive newest-first menu, "
+            "'latest' for the newest summary report, or a path to a "
+            "specific batch_encoder_*_summary.json file."
+        ),
+    )
+
+    return parser.parse_args(argv)
+
+
+def _add_common_options(parser: argparse.ArgumentParser) -> None:
+    """Registers the encode options shared by normal and retry modes."""
     parser.add_argument(
         "--min-size",
         default=config.batch.min_size,
@@ -197,8 +256,6 @@ def parse_arguments():
         help="Show the version number and exit.",
     )
 
-    return parser.parse_args()
-
 
 class BatchEncoder:
     """
@@ -225,8 +282,11 @@ class BatchEncoder:
         min_resolution: Optional[str] = None,
         skip_codecs: Optional[set[str]] = None,
         debug: bool = False,
+        retry_context: Optional[dict[str, Any]] = None,
     ):
         self.batch_input = batch_input
+        self.retry_context = retry_context
+        self.is_retry_mode = retry_context is not None
         self.encoding_class = encoding_class
         self.codec = codec
         self.min_size = min_size
@@ -317,11 +377,23 @@ class BatchEncoder:
 
             try:
                 if not file.is_file():
-                    self.record_result(
-                        EncodingStatus.SKIPPED,
-                        file,
-                        reason="Input path does not exist or is not a file.",
-                    )
+                    if self.is_retry_mode:
+                        # In retry mode an unavailable path must stay FAILED, or it
+                        # would drop out of the FAILED bucket and never be retried.
+                        self.record_result(
+                            EncodingStatus.FAILED,
+                            file,
+                            reason="Input path does not exist or is not a file.",
+                            failure_type="path_unavailable",
+                            path_exists_at_failure=False,
+                            batch_root_exists_at_failure=self._batch_root_exists(),
+                        )
+                    else:
+                        self.record_result(
+                            EncodingStatus.SKIPPED,
+                            file,
+                            reason="Input path does not exist or is not a file.",
+                        )
                     continue
 
                 file_size = file.stat().st_size
@@ -400,6 +472,9 @@ class BatchEncoder:
                 f"{color_text(self.initial_queue_size, 'cyan', bold=True)} videos have been processed."
             )
 
+            if self.is_retry_mode:
+                self._warn_existing_temp_output(file_path)
+
             start_time = time.time()
             try:
                 media_file = MediaFile(path, debug=self.debug, log_filename=self.log_filename)
@@ -425,12 +500,29 @@ class BatchEncoder:
                     original_size=original_size,
                     duration_seconds=time.time() - start_time,
                 )
+            except FileNotFoundError as e:
+                self.logger.warning(f"⚠️ Path unavailable during encode: {e}")
+                self.record_result(
+                    EncodingStatus.FAILED,
+                    path,
+                    reason="Input path does not exist or is not a file.",
+                    failure_type="path_unavailable",
+                    exception_type="FileNotFoundError",
+                    exception_message=str(e),
+                    path_exists_at_failure=path.exists(),
+                    batch_root_exists_at_failure=self._batch_root_exists(),
+                    original_size=original_size,
+                    duration_seconds=time.time() - start_time,
+                )
             except Exception as e:
                 self.logger.exception(e)
                 self.record_result(
                     EncodingStatus.FAILED,
                     path,
                     reason=f"Unexpected batch error: {e}",
+                    failure_type="unexpected_exception",
+                    exception_type=type(e).__name__,
+                    exception_message=str(e),
                     original_size=original_size,
                     duration_seconds=time.time() - start_time,
                 )
@@ -464,6 +556,7 @@ class BatchEncoder:
                 original_size=original_size,
                 encoded_size=encoded_size,
                 duration_seconds=duration_seconds,
+                **self._warning_metadata(encoder),
             )
         elif status == EncodingStatus.SKIPPED:
             self.record_result(
@@ -472,16 +565,21 @@ class BatchEncoder:
                 reason="Already in a codec configured by --skip-codecs.",
                 original_size=original_size,
                 duration_seconds=duration_seconds,
+                **self._warning_metadata(encoder),
             )
         elif status == EncodingStatus.FAILED:
+            metadata = encoder.failure_metadata()
+            reason = metadata.pop("reason", None) or "Encoding failed."
+            metadata.setdefault("failure_type", "encode_failed")
             self.record_result(
                 EncodingStatus.FAILED,
                 path,
-                reason="Encoding failed.",
+                reason=reason,
                 original_size=original_size,
                 duration_seconds=duration_seconds,
+                **metadata,
             )
-            self.logger.warning(f"❌ Encoding failed for {path}.")
+            self.logger.warning(f"❌ Encoding failed for {path}: {reason}")
         elif status == EncodingStatus.LOWQUALITY:
             output_path = encoder.output_tmp_file
             encoded_size = self.safe_file_size(output_path)
@@ -493,6 +591,7 @@ class BatchEncoder:
                 original_size=original_size,
                 encoded_size=encoded_size,
                 duration_seconds=duration_seconds,
+                **self._warning_metadata(encoder),
             )
             encoder._delete_encoded()
             self.logger.warning(
@@ -510,6 +609,7 @@ class BatchEncoder:
                 original_size=original_size,
                 encoded_size=encoded_size,
                 duration_seconds=duration_seconds,
+                **self._warning_metadata(encoder),
             )
             encoder._delete_encoded()
             self.logger.warning(
@@ -543,6 +643,39 @@ class BatchEncoder:
             self.logger.debug(f"Skipping {path}: {reason}")
         else:
             self.logger.debug(f"Recorded {status.name} for {path}: {reason}")
+
+    @staticmethod
+    def _warning_metadata(encoder: PresetCRFEncoder) -> dict[str, Any]:
+        """Surface any non-fatal encoder warnings into the result entry."""
+        warnings = getattr(encoder, "last_warnings", None)
+        return {"warnings": list(warnings)} if warnings else {}
+
+    def _batch_root_exists(self) -> Optional[bool]:
+        try:
+            return self.batch_input.source_path.exists()
+        except OSError:
+            return None
+
+    def _warn_existing_temp_output(self, file_path: str) -> None:
+        """Warn (without touching) about leftover temp output for a retry target."""
+        entries = (self.retry_context or {}).get("_failed_entries") or {}
+        entry = entries.get(file_path)
+        if not entry:
+            return
+        temp_path = entry.get("temp_output_path")
+        if not temp_path:
+            return
+        temp = Path(temp_path)
+        try:
+            if not temp.is_file():
+                return
+            size = self.encoding_class.human_readable_size(temp.stat().st_size)
+        except OSError:
+            return
+        self.logger.warning(
+            f"⚠️ Existing temp output for retry target: {temp} ({size}). "
+            "It will not be reused or deleted automatically."
+        )
 
     @property
     def processed_paths(self) -> set[str]:
@@ -680,6 +813,15 @@ class BatchEncoder:
                 for status in STATUS_ORDER
             },
         }
+
+        if self.retry_context:
+            report["retry"] = {
+                "source_report": self.retry_context.get("source_report"),
+                "source_run_id": self.retry_context.get("source_run_id"),
+                "source_input": self.retry_context.get("source_input"),
+                "selected_status": self.retry_context.get("selected_status", "FAILED"),
+                "selected_failed_count": self.retry_context.get("selected_failed_count"),
+            }
 
         try:
             self.report_file.parent.mkdir(parents=True, exist_ok=True)
@@ -819,9 +961,18 @@ def main() -> int:
     args = parse_arguments()
 
     try:
-        batch_input = discover_batch_input(args.input_path)
         skip_codecs = resolve_skip_codecs(args.skip_codecs)
         encoding_class = get_custom_encoding_class(args.codec)
+
+        if args.mode == "retry":
+            log_dir = Path(config.general.log_dir)
+            report_path = resolve_retry_report(args.retry_target, log_dir)
+            report = load_summary_report(report_path)
+            batch_input = make_retry_batch_input(report_path, report)
+            retry_context = make_retry_context(report_path, report, batch_input)
+        else:
+            batch_input = discover_batch_input(args.input_path)
+            retry_context = None
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -842,6 +993,7 @@ def main() -> int:
         tune=args.tune,
         skip_codecs=skip_codecs,
         debug=args.debug,
+        retry_context=retry_context,
     )
     encoder.encode_videos()
     return 0

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Type, Optional, List, Dict, Set, Tuple
 import subprocess
+import tempfile
 import time
 import re
 from tqdm import tqdm
@@ -312,8 +313,18 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
 
                 increment = max(0, frame - pbar.n)
                 pbar.update(increment)
-            
+
             return True
+
+        @staticmethod
+        def _close_pbar(pbar: Optional[tqdm]) -> None:
+            """Close a tqdm bar without ever raising."""
+            if pbar is not None:
+                try:
+                    pbar.leave = False
+                    pbar.close()
+                except Exception:
+                    pass
 
 
         def _encode(self) -> EncodingStatus:
@@ -340,53 +351,75 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
             mode, pbar = self._find_progress_mode(duration=duration, total_frames=total_frames)
 
             if mode != ProgressMode.NONE:
+                self.last_ffmpeg_command = [str(arg) for arg in ffmpeg_cmd]
                 self.logger.info(
                     f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
                 )
                 start_time = time.time()
 
-                # Start FFmpeg encoding process
-                process = subprocess.Popen(
-                    ffmpeg_cmd,
-                    stdout=subprocess.PIPE, # DEVNULL
-                    stderr=subprocess.DEVNULL,  # Suppress stderr output
-                    bufsize=1,  # Line-buffered
-                    universal_newlines=True,
-                    encoding="utf-8",
-                )
-                
-                max_tolerance = 2 # switch progress mode until 2 invalid matches
+                max_tolerance = 2  # switch progress mode until 2 invalid matches
                 num_invalid = 0
-                
-                for line in process.stdout:
-                    if mode == ProgressMode.TIME:
-                        valid = self._time_progress_update(pbar, line, start_time)
-                        if not valid:
-                            num_invalid += 1
-                        if num_invalid >= max_tolerance:
-                            pbar.leave = False
-                            pbar.close()
-                            mode, pbar = self._find_progress_mode(duration=None, total_frames=total_frames)
-                            num_invalid = 0
-                    elif mode == ProgressMode.FRAME:
-                        valid = self._frame_progress_update(pbar, line)
-                        if not valid:
-                            num_invalid += 1
-                        if num_invalid >= max_tolerance:
-                            mode, pbar = self._find_progress_mode(duration=None, total_frames=0)
-                            pbar.leave = False
-                            pbar.close()
-                            num_invalid = 0
-                    else:
-                        if pbar is not None:
-                            pbar.close()
-                            pbar = None
-                
-                process.wait()
-                if pbar is not None:
-                    pbar.close()
-                    pbar = None
-                    
+
+                # ffmpeg progress is read from stdout; stderr is captured to a temp
+                # file so a bounded tail is available for failure reports without
+                # risking a pipe deadlock or confusing the progress parser.
+                with tempfile.TemporaryFile(
+                    mode="w+", encoding="utf-8", errors="replace"
+                ) as stderr_file:
+                    process = subprocess.Popen(
+                        ffmpeg_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=stderr_file,
+                        bufsize=1,  # Line-buffered
+                        universal_newlines=True,
+                        encoding="utf-8",
+                    )
+
+                    try:
+                        for line in process.stdout:
+                            if pbar is None or mode == ProgressMode.NONE:
+                                # Keep draining stdout so ffmpeg never blocks on a
+                                # full pipe, even with no progress bar.
+                                continue
+                            try:
+                                if mode == ProgressMode.TIME:
+                                    valid = self._time_progress_update(pbar, line, start_time)
+                                else:
+                                    valid = self._frame_progress_update(pbar, line)
+
+                                if not valid:
+                                    num_invalid += 1
+                                    if num_invalid >= max_tolerance:
+                                        self._close_pbar(pbar)
+                                        next_frames = (
+                                            total_frames if mode == ProgressMode.TIME else 0
+                                        )
+                                        mode, pbar = self._find_progress_mode(
+                                            duration=None, total_frames=next_frames
+                                        )
+                                        num_invalid = 0
+                            except Exception as e:
+                                # A progress/tqdm failure must never kill an encode.
+                                self.logger.warning(
+                                    f"⚠️ Progress display failed; continuing without it: {e}"
+                                )
+                                self.add_warning(
+                                    "progress_ui_error",
+                                    "tqdm failed; progress disabled for this encode",
+                                    exception_type=type(e).__name__,
+                                    exception_message=str(e),
+                                )
+                                self._close_pbar(pbar)
+                                pbar = None
+                                mode = ProgressMode.NONE
+                    finally:
+                        self._close_pbar(pbar)
+                        pbar = None
+
+                    process.wait()
+                    self.last_ffmpeg_stderr_tail = self._read_stream_tail(stderr_file)
+
+                self.last_return_code = process.returncode
                 if process.returncode == 0:
                     self.logger.debug(
                         f"✅ Encoding successful: {self.media_file.file_path}"
@@ -405,10 +438,20 @@ def get_custom_encoding_class(codec: str) -> Type[PresetCRFEncoder]:
                     for arg in ffmpeg_cmd
                     if arg not in ("-progress", "pipe:1", "-nostats")
                 ]
+                self.last_ffmpeg_command = [str(arg) for arg in ffmpeg_cmd]
                 self.logger.info(
                     f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
                 )
-                subprocess.run(ffmpeg_cmd, check=True, encoding="utf-8")
+                with tempfile.TemporaryFile(
+                    mode="w+", encoding="utf-8", errors="replace"
+                ) as stderr_file:
+                    result = subprocess.run(
+                        ffmpeg_cmd, stderr=stderr_file, encoding="utf-8"
+                    )
+                    self.last_ffmpeg_stderr_tail = self._read_stream_tail(stderr_file)
+                self.last_return_code = result.returncode
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(result.returncode, ffmpeg_cmd)
 
             return EncodingStatus.SUCCESS
 

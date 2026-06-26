@@ -1,8 +1,9 @@
 import subprocess
 import sys
 import logging
+import tempfile
 from abc import ABC
-from typing import List, Dict, Optional, Set, Union
+from typing import Any, List, Dict, Optional, Set, Union
 from pathlib import Path
 from utils import setup_logger, color_text
 from config import load_config, EncodingStatus, FFMPEG
@@ -91,9 +92,98 @@ class CRFEncoder(ABC):
 
         self.output_tmp_file = self.generate_tmp_output_path()
         self.new_file_path = self.generate_new_file_path()
+
+        # Structured failure/warning metadata, surfaced to BatchEncoder for reporting.
+        self.last_failure: Dict[str, Any] = {}
+        self.last_warnings: List[Dict[str, Any]] = []
+        self.last_ffmpeg_stderr_tail: Optional[str] = None
+        self.last_ffmpeg_stdout_tail: Optional[str] = None
+        self.last_return_code: Optional[int] = None
+        self.last_cleanup_error: Optional[str] = None
+        self.last_ffmpeg_command: Optional[List[str]] = None
+
         self.logger.debug(
             f'🔹 {self.__class__.__name__} initialized for "{media_file.file_path}"'
         )
+
+    # ------------------------------------------------------------------ #
+    # Failure / warning metadata
+    # ------------------------------------------------------------------ #
+    STDERR_TAIL_LIMIT = 12_000
+
+    def set_failure(self, failure_type: str, reason: str, **metadata: Any) -> None:
+        """Record structured details about why this encode failed."""
+        failure: Dict[str, Any] = {
+            "failure_type": failure_type,
+            "reason": reason,
+        }
+        for key, value in metadata.items():
+            if value is not None:
+                failure[key] = value
+        self.last_failure = failure
+
+    def add_warning(self, warning_type: str, message: str, **metadata: Any) -> None:
+        """Record a non-fatal warning that occurred during this encode."""
+        warning: Dict[str, Any] = {
+            "warning_type": warning_type,
+            "message": message,
+        }
+        for key, value in metadata.items():
+            if value is not None:
+                warning[key] = value
+        self.last_warnings.append(warning)
+
+    def _temp_output_info(self) -> Dict[str, Any]:
+        """Best-effort details about the temp output file. Never raises."""
+        info: Dict[str, Any] = {}
+        tmp = self.output_tmp_file
+        if tmp is None:
+            return info
+        try:
+            tmp_path = Path(tmp)
+            info["temp_output_path"] = str(tmp_path)
+            exists = tmp_path.is_file()
+            info["temp_output_exists"] = exists
+            info["temp_output_size"] = tmp_path.stat().st_size if exists else None
+        except OSError:
+            pass
+        return info
+
+    def failure_metadata(self) -> Dict[str, Any]:
+        """Build the structured metadata dict for a FAILED result entry."""
+        metadata: Dict[str, Any] = dict(self.last_failure)
+        if self.last_ffmpeg_stderr_tail and "stderr_tail" not in metadata:
+            metadata["stderr_tail"] = self.last_ffmpeg_stderr_tail
+        if self.last_ffmpeg_stdout_tail and "stdout_tail" not in metadata:
+            metadata["stdout_tail"] = self.last_ffmpeg_stdout_tail
+        if self.last_return_code is not None and "return_code" not in metadata:
+            metadata["return_code"] = self.last_return_code
+        if self.last_cleanup_error and "cleanup_error" not in metadata:
+            metadata["cleanup_error"] = self.last_cleanup_error
+        if self.last_ffmpeg_command and "ffmpeg_command" not in metadata:
+            metadata["ffmpeg_command"] = self.last_ffmpeg_command
+        metadata.update(self._temp_output_info())
+        if self.last_warnings:
+            metadata["warnings"] = list(self.last_warnings)
+        return metadata
+
+    @classmethod
+    def _read_stream_tail(cls, stream_file) -> Optional[str]:
+        """Read a bounded tail from a temp stream file. Never raises."""
+        try:
+            stream_file.flush()
+        except Exception:
+            pass
+        try:
+            stream_file.seek(0)
+            content = stream_file.read()
+        except Exception:
+            return None
+        if not content:
+            return None
+        if len(content) > cls.STDERR_TAIL_LIMIT:
+            return content[-cls.STDERR_TAIL_LIMIT:]
+        return content
 
     def generate_new_file_path(self) -> Path:
         """
@@ -382,14 +472,22 @@ class CRFEncoder(ABC):
         return EncodingStatus.SUCCESS
 
     def _delete_encoded(self) -> bool:
-        if self.output_tmp_file.is_file():
+        if self.output_tmp_file and self.output_tmp_file.is_file():
             try:
                 self.output_tmp_file.unlink()
                 self.logger.debug(f"🧹 Deleted temp file: {self.output_tmp_file}")
                 self.output_tmp_file = None
             except (PermissionError, OSError) as e:
+                self.last_cleanup_error = str(e)
+                self.set_failure(
+                    "cleanup_failed",
+                    f"Cannot delete temporary output: {e}",
+                    exception_type=type(e).__name__,
+                    exception_message=str(e),
+                    cleanup_error=str(e),
+                )
                 self.logger.warning(
-                    f"⚠️ Cannot delete '{self.output_tmp_file}': file is in use."
+                    f"⚠️ Cannot delete '{self.output_tmp_file}': {e}"
                 )
                 return False
         return True
@@ -414,6 +512,14 @@ class CRFEncoder(ABC):
                 self.logger.debug(f"🔁 Replaced {self.output_tmp_file} with {self.new_file_path}")
                 self.output_tmp_file = None
             except (OSError, PermissionError) as e:
+                self.last_cleanup_error = str(e)
+                self.set_failure(
+                    "cleanup_failed",
+                    f"Failed to replace original with encoded file: {e}",
+                    exception_type=type(e).__name__,
+                    exception_message=str(e),
+                    cleanup_error=str(e),
+                )
                 self.logger.error(
                     f"❌ Failed to rename encoded file {self.output_tmp_file} into {self.new_file_path}: {e}."
                 )
@@ -504,11 +610,18 @@ class CRFEncoder(ABC):
 
         if not ffmpeg_cmd:
             return EncodingStatus.SKIPPED
+        self.last_ffmpeg_command = [str(arg) for arg in ffmpeg_cmd]
         self.logger.info(
             f"🚀 Final ffmpeg arg: {color_text(" ".join(str(arg) for arg in ffmpeg_cmd), 'reset', dim=True)}"
         )
 
-        subprocess.run(ffmpeg_cmd, check=True, encoding="utf-8")
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as stderr_file:
+            result = subprocess.run(ffmpeg_cmd, stderr=stderr_file, encoding="utf-8")
+            self.last_ffmpeg_stderr_tail = self._read_stream_tail(stderr_file)
+
+        self.last_return_code = result.returncode
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, ffmpeg_cmd)
 
         return EncodingStatus.SUCCESS
 
@@ -549,14 +662,25 @@ class CRFEncoder(ABC):
                     f"⚠️ Skipping encoding: {color_text(self.media_file.file_path, dim=True)} (Already in desired format)."
                 )
         except subprocess.CalledProcessError as e:
-            error_msg = f"❌ Encoding failed for {self.media_file.file_path}:\n"
-            if e.stderr:
-                error_msg += f"Stderr: {color_text(e.stderr.decode(), color='reset', dim=True)}\n"
-            if e.stdout:
-                error_msg += f"Stdout: {color_text(e.stderr.decode(), color='reset', dim=True)}\n"
-
-            error_msg += f"Return code: {color_text(e.returncode, bold=True)}"
+            return_code = e.returncode if e.returncode is not None else self.last_return_code
+            self.last_return_code = return_code
+            stderr_tail = self.last_ffmpeg_stderr_tail
+            error_msg = (
+                f"❌ Encoding failed for {self.media_file.file_path} "
+                f"(return code {color_text(return_code, bold=True)}).\n"
+            )
+            if stderr_tail:
+                error_msg += f"Stderr tail: {color_text(stderr_tail, color='reset', dim=True)}"
             self.logger.error(error_msg)
+            self.set_failure(
+                "ffmpeg_failed",
+                "ffmpeg returned a non-zero exit code.",
+                exception_type=type(e).__name__,
+                exception_message=str(e),
+                return_code=return_code,
+                stderr_tail=stderr_tail,
+                ffmpeg_command=self.last_ffmpeg_command,
+            )
             ret_state = EncodingStatus.FAILED
         except KeyboardInterrupt:
             self.logger.warning(
@@ -567,6 +691,12 @@ class CRFEncoder(ABC):
             return EncodingStatus.FAILED
         except Exception as e:
             self.logger.exception(e)
+            self.set_failure(
+                "unexpected_exception",
+                f"Unexpected error during encoding: {e}",
+                exception_type=type(e).__name__,
+                exception_message=str(e),
+            )
             ret_state = EncodingStatus.FAILED
 
         ret_state = self.clean_up(ret_state)
